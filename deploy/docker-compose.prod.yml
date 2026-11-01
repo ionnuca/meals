@@ -1,0 +1,22 @@
+# Producție: doar aplicația. Baza de date și reverse proxy-ul (Caddy) există deja pe server.
+# Pe server, fișierul se copiază ca /opt/meals/docker-compose.yml, lângă un fișier .env (vezi docs/LANSARE.md).
+services:
+  app:
+    image: ${MEALS_IMAGE:-ghcr.io/ionnuca/meals:latest}
+    container_name: meals-app
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      UPLOAD_DIR: /data/uploads
+    volumes:
+      - ./data:/data
+    mem_limit: 256m
+    memswap_limit: 384m
+    networks:
+      - shared
+
+networks:
+  # Rețeaua Docker existentă în care se află Caddy și PostgreSQL (numele se vede cu `docker network ls`)
+  shared:
+    external: true
+    name: ${SHARED_NETWORK:?Setează SHARED_NETWORK în .env}

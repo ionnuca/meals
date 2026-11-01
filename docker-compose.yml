@@ -1,0 +1,31 @@
+# Rulare locală completă: PostgreSQL + aplicația, pe http://localhost:3000
+# Pornire: docker compose up -d --build
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: meals
+      POSTGRES_PASSWORD: meals-local
+      POSTGRES_DB: meals
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U meals']
+      interval: 5s
+      retries: 10
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://meals:meals-local@db:5432/meals
+    ports:
+      - '3000:3000'
+    volumes:
+      - uploads:/data
+
+volumes:
+  db-data:
+  uploads:

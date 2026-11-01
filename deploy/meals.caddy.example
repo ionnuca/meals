@@ -1,0 +1,9 @@
+# Site pentru Caddy-ul existent. Înlocuiește domeniul cu al tău.
+# Caddy obține automat certificatul HTTPS și trimite X-Forwarded-Proto/Host către aplicație.
+meals.exemplu.md {
+	encode zstd gzip
+	reverse_proxy meals-app:3000
+	request_body {
+		max_size 10MB
+	}
+}
