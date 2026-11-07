@@ -25,7 +25,7 @@ Bara de jos are patru secțiuni: **Plan**, **Calendar**, **Rețete**, **Cumpăr�
 ### 1.3 Funcționalități
 
 **Prima pornire și conturi**
-- La prima deschidere, aplicația cere crearea primului cont (`/setup`). După aceea pagina nu mai este disponibilă.
+- La instalarea automată, primul cont se creează din secretele GitHub. Altfel, la prima deschidere aplicația cere crearea lui (`/setup`). După ce există un cont, pagina nu mai este disponibilă.
 - Din Setări se adaugă alți membri ai familiei (nume, email, parolă inițială), se șterg conturi și se schimbă parola proprie.
 - Toți membrii văd și editează aceleași date.
 - Sesiunea durează 30 de zile și se prelungește automat la folosire.
@@ -234,6 +234,7 @@ shopping_extras   produse adăugate manual pe perioadă
 | `DB_POOL_SIZE` | `5` | conexiuni simultane la baza de date |
 | `SKIP_MIGRATIONS` | — | `true` dezactivează migrațiile automate la pornire |
 | `MIGRATIONS_DIR` | `./drizzle` | locația migrațiilor, dacă e alta |
+| `INITIAL_ADMIN_EMAIL`, `INITIAL_ADMIN_PASSWORD`, `INITIAL_ADMIN_NAME` | — | dacă baza nu are niciun cont, primul cont se creează la pornire din aceste valori (folosit de instalarea automată) |
 
 ### 2.8 Resurse
 

@@ -5,6 +5,7 @@ import {
 	SESSION_COOKIE,
 	clearSessionCookie,
 	deleteExpiredSessions,
+	ensureInitialAdmin,
 	setSessionCookie,
 	validateSession
 } from '#lib/server/auth.ts';
@@ -15,6 +16,7 @@ export const init: ServerInit = async () => {
 		console.log('[meals] migrațiile bazei de date sunt la zi');
 	}
 	await deleteExpiredSessions().catch(() => {});
+	if ((await ensureInitialAdmin()) === 'created') console.log('[meals] primul cont a fost creat din INITIAL_ADMIN_EMAIL');
 };
 
 /** Adrese accesibile fără autentificare. */

@@ -154,3 +154,24 @@ export function recordFailure(key: string): void {
 export function clearFailures(key: string): void {
 	attempts.delete(key);
 }
+
+// ---------- Primul cont, creat automat la instalare ----------
+
+/**
+ * Dacă baza nu are niciun utilizator și sunt setate INITIAL_ADMIN_EMAIL și INITIAL_ADMIN_PASSWORD,
+ * creează primul cont. Așa pagina /setup nu rămâne deschisă după o instalare automată.
+ */
+export async function ensureInitialAdmin(env: Record<string, string | undefined> = process.env): Promise<'created' | 'exists' | 'skipped'> {
+	const email = normalizeEmail(env.INITIAL_ADMIN_EMAIL ?? '');
+	const password = env.INITIAL_ADMIN_PASSWORD ?? '';
+	if (!email || !password) return 'skipped';
+	if ((await userCount()) > 0) return 'exists';
+	if (!isEmail(email)) throw new Error('INITIAL_ADMIN_EMAIL nu e o adresă validă.');
+	const problem = validatePassword(password);
+	if (problem) throw new Error(`INITIAL_ADMIN_PASSWORD: ${problem}`);
+	await getDb()
+		.insert(users)
+		.values({ email, name: (env.INITIAL_ADMIN_NAME ?? '').trim() || 'Administrator', passwordHash: await hashPassword(password) })
+		.onConflictDoNothing();
+	return 'created';
+}

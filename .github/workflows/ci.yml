@@ -26,8 +26,8 @@ jobs:
       TEST_DATABASE_URL: postgres://meals:meals@localhost:5432/meals_test
       E2E_DATABASE_URL: postgres://meals:meals@localhost:5432/meals_e2e
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -47,15 +47,16 @@ jobs:
           path: test-results
           retention-days: 7
 
+
   image:
     needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
@@ -72,38 +73,82 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # Publicarea pe server pornește doar după ce variabila DEPLOY_ENABLED=true e setată în repository
-  # (Settings → Secrets and variables → Actions → Variables) și există secretele DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY.
+  # Instalarea / actualizarea pe server. Pornește doar după ce variabila DEPLOY_ENABLED=true
+  # e setată în repository (vezi docs/LANSARE.md, secțiunea „Instalare automată”).
+  # Repository-ul e public: datele serverului stau doar în secretele și variabilele GitHub.
   deploy:
     needs: image
     if: vars.DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
     concurrency: deploy-production
+    permissions:
+      contents: read
+      packages: read
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      MEALS_DOMAIN: ${{ vars.MEALS_DOMAIN }}
     steps:
-      - name: Publică pe server prin SSH
-        env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/meals' }}
-          IMAGE: ghcr.io/${{ github.repository }}:${{ github.sha }}
+      - uses: actions/checkout@v5
+
+      - name: Verifică secretele și variabilele
         run: |
-          mkdir -p ~/.ssh
-          echo "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          missing=""
+          for v in DEPLOY_HOST DEPLOY_USER DEPLOY_SSH_KEY MEALS_DOMAIN; do
+            [ -n "${!v}" ] || missing="$missing $v"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Lipsesc în Settings → Secrets and variables → Actions:$missing"
+            exit 1
+          fi
+
+      - name: Pregătește conexiunea SSH
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
-          ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" \
-            "cd '$DEPLOY_PATH' && sed -i 's#^MEALS_IMAGE=.*#MEALS_IMAGE=$IMAGE#' .env && docker compose pull && docker compose up -d && docker image prune -f"
-      - name: Verifică pornirea
+
+      - name: Instalează sau actualizează pe server
         env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/meals' }}
+          MEALS_IMAGE: ghcr.io/${{ github.repository }}:${{ github.sha }}
+          APP_DIR: ${{ vars.DEPLOY_PATH || '/opt/meals' }}
+          STACK_PROJECT: ${{ vars.STACK_PROJECT || 'ttm' }}
+          DB_SERVICE: ${{ vars.DB_SERVICE || 'db' }}
+          CADDY_SERVICE: ${{ vars.CADDY_SERVICE || 'caddy' }}
+          SITES_DIR: ${{ vars.SITES_DIR || '/opt/ttm/sites' }}
+          INITIAL_ADMIN_EMAIL: ${{ secrets.MEALS_ADMIN_EMAIL }}
+          INITIAL_ADMIN_PASSWORD: ${{ secrets.MEALS_ADMIN_PASSWORD }}
+          INITIAL_ADMIN_NAME: ${{ vars.MEALS_ADMIN_NAME }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          for i in $(seq 1 20); do
-            if ssh -i ~/.ssh/deploy_key "$DEPLOY_USER@$DEPLOY_HOST" "cd '$DEPLOY_PATH' && docker compose ps --format '{{.Health}}' | grep -q healthy"; then
-              echo "Aplicația rulează"; exit 0
+          umask 077
+          # Parametrii ajung pe server într-un fișier temporar (nu în linia de comandă), șters imediat după citire.
+          : > deploy.env
+          for v in MEALS_DOMAIN MEALS_IMAGE APP_DIR STACK_PROJECT DB_SERVICE CADDY_SERVICE SITES_DIR \
+                   INITIAL_ADMIN_EMAIL INITIAL_ADMIN_PASSWORD INITIAL_ADMIN_NAME GHCR_USER GHCR_TOKEN; do
+            printf '%s=%q\n' "$v" "${!v}" >> deploy.env
+          done
+          SSH="ssh -i $HOME/.ssh/deploy_key -o BatchMode=yes $DEPLOY_USER@$DEPLOY_HOST"
+          REMOTE_DIR=$($SSH 'mktemp -d /tmp/meals-deploy.XXXXXX')
+          scp -q -i ~/.ssh/deploy_key -o BatchMode=yes \
+            deploy/install.sh deploy/docker-compose.prod.yml deploy/backup.sh deploy.env \
+            "$DEPLOY_USER@$DEPLOY_HOST:$REMOTE_DIR/"
+          rm -f deploy.env
+          $SSH "bash -c 'cd $REMOTE_DIR && set -a && . ./deploy.env && set +a && rm -f deploy.env && bash ./install.sh; rc=\$?; rm -rf $REMOTE_DIR; exit \$rc'"
+
+      - name: Verifică adresa publică
+        run: |
+          for _ in $(seq 1 20); do
+            if curl -fsS --max-time 10 "https://$MEALS_DOMAIN/health" | grep -q ok; then
+              echo "https://$MEALS_DOMAIN răspunde"; exit 0
             fi
             sleep 6
           done
-          echo "Aplicația nu a devenit sănătoasă la timp" && exit 1
+          echo "::warning::Aplicația rulează pe server, dar https://$MEALS_DOMAIN nu răspunde încă (DNS sau certificat în curs)."
+
+      - name: Curăță cheia SSH
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

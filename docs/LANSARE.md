@@ -86,7 +86,59 @@ Pe server rulează deja un stack Docker cu **PostgreSQL** și **Caddy**. Aplica�
 - un site nou în Caddy, pe un subdomeniu propriu, cu HTTPS automat;
 - imaginea vine din GitHub Container Registry (`ghcr.io/ionnuca/meals`) și se construiește automat la fiecare push pe `main`.
 
-### 3.2 Pregătire, o singură dată
+### 3.2 Instalare automată din GitHub (recomandat)
+
+Workflow-ul `.github/workflows/ci.yml` face tot drumul până în producție:
+
+1. La orice push sau pull request: verificare tipuri, teste unitare, teste de integrare cu PostgreSQL, build și teste e2e în Chrome.
+2. La push pe `main`: construiește imaginea Docker și o publică în GHCR (`:latest` și `:<commit>`).
+3. Dacă publicarea e activată: se conectează la server prin SSH și rulează `deploy/install.sh`.
+
+**Ce face `deploy/install.sh` pe server.** La prima rulare instalează tot; la următoarele doar actualizează imaginea.
+- găsește containerele PostgreSQL și Caddy ale stack-ului existent și rețeaua lor Docker;
+- creează utilizatorul și baza `meals` cu o parolă generată pe server (nu iese niciodată de pe server);
+- creează directorul aplicației, `.env` (drepturi 600) și `docker-compose.yml`;
+- descarcă imaginea commit-ului, pornește containerul și așteaptă să fie `healthy`;
+- creează primul cont din secretele `MEALS_ADMIN_EMAIL` / `MEALS_ADMIN_PASSWORD`, apoi scoate parola din `.env`;
+- scrie site-ul în Caddy și îl reîncarcă; dacă Caddy refuză configurația, revine la cea anterioară.
+
+Utilizatorul de publicare are nevoie doar de acces la Docker (nu de `sudo`): scriptul face operațiile care cer root prin containere temporare. Pentru descărcarea imaginii folosește tokenul temporar al workflow-ului, într-o configurație Docker separată, deci pachetul poate rămâne privat și autentificările altor aplicații de pe server nu sunt atinse.
+
+**Ce faci tu, o singură dată:**
+
+1. **DNS:** o înregistrare `A` pentru subdomeniul ales, spre IP-ul serverului.
+2. **GitHub → Settings → Secrets and variables → Actions** în acest repository:
+
+| Tip | Nume | Valoare |
+|---|---|---|
+| Secret | `DEPLOY_HOST` | adresa serverului |
+| Secret | `DEPLOY_USER` | utilizatorul de publicare (cu acces la Docker) |
+| Secret | `DEPLOY_SSH_KEY` | cheia privată SSH a acelui utilizator |
+| Secret | `MEALS_ADMIN_EMAIL` | emailul primului cont |
+| Secret | `MEALS_ADMIN_PASSWORD` | parola primului cont (minim 10 caractere, fără apostrof) |
+| Variabilă | `MEALS_DOMAIN` | subdomeniul aplicației |
+| Variabilă | `DEPLOY_ENABLED` | `true` |
+
+Opționale, dacă stack-ul existent diferă de valorile implicite:
+
+| Variabilă | Implicit |
+|---|---|
+| `DEPLOY_PATH` | `/opt/meals` |
+| `STACK_PROJECT` | `ttm` (numele proiectului Docker Compose cu PostgreSQL și Caddy) |
+| `DB_SERVICE` | `db` |
+| `CADDY_SERVICE` | `caddy` |
+| `SITES_DIR` | `/opt/ttm/sites` (directorul din care Caddy încarcă site-uri suplimentare) |
+| `MEALS_ADMIN_NAME` | `Administrator` |
+
+Secretele sunt per repository: dacă există deja pentru alt proiect, trebuie adăugate și aici. Valorile nu apar în cod și sunt mascate în jurnale (jurnalele unui repository public sunt publice).
+
+3. **Pornire:** GitHub → **Actions → CI și publicare → Run workflow** (ramura `main`), sau orice push pe `main`. Urmărește pasul „Instalează sau actualizează pe server”; la final, pasul „Verifică adresa publică” confirmă că `https://<subdomeniu>/health` răspunde.
+
+Apoi intră în aplicație cu contul din secrete și schimbă parola din Setări, dacă vrei. De acum, fiecare push pe `main` care trece testele ajunge automat în producție.
+
+### 3.3 Instalare manuală (alternativă)
+
+Aceiași pași pe care îi face scriptul, dacă preferi să-i rulezi de mână.
 
 Comenzile se rulează pe server, ca administrator.
 
@@ -158,31 +210,6 @@ docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile
 Configurația producției existente nu se modifică.
 
 **8) Primul cont.** Deschide `https://<subdomeniul-tău>`, creează primul cont, apoi adaugă din Setări ceilalți membri ai familiei.
-
-### 3.3 Publicare automată din GitHub (opțional, recomandat)
-
-Workflow-ul `.github/workflows/ci.yml` are trei pași:
-
-1. La orice push sau pull request: verificare tipuri, teste unitare, teste de integrare cu PostgreSQL, build și teste e2e în Chrome.
-2. La push pe `main`: construiește imaginea Docker și o publică în GHCR (`:latest` și `:<commit>`).
-3. Opțional: se conectează la server prin SSH și actualizează aplicația.
-
-Pentru pasul 3, în GitHub → **Settings → Secrets and variables → Actions**:
-
-| Tip | Nume | Valoare |
-|---|---|---|
-| Secret | `DEPLOY_HOST` | adresa serverului |
-| Secret | `DEPLOY_USER` | utilizatorul de publicare (cu acces la Docker) |
-| Secret | `DEPLOY_SSH_KEY` | cheia privată SSH a acelui utilizator, dedicată publicării |
-| Variabilă | `DEPLOY_ENABLED` | `true` (până o setezi, pasul de publicare e sărit) |
-| Variabilă | `DEPLOY_PATH` | opțional; implicit `/opt/meals` |
-
-Valorile stau doar în GitHub și nu apar în cod sau în jurnale. La publicare, workflow-ul:
-1. scrie în `.env` imaginea commit-ului (`MEALS_IMAGE`);
-2. rulează `docker compose pull && docker compose up -d`;
-3. așteaptă până când containerul este `healthy`.
-
-Dacă secretele sunt deja definite pentru alt proiect, trebuie adăugate și în acest repository: secretele GitHub sunt per repository.
 
 ### 3.4 Actualizare manuală
 
