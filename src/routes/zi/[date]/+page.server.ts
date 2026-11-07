@@ -1,8 +1,8 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { getDb, schema } from '#lib/server/db/index.ts';
 import { eventsBetween, mealsBetween } from '#lib/server/data.ts';
-import { int, isMealType, str, timeField } from '#lib/server/forms.ts';
-import { isIsoDate, startOfWeek, today, weekDays } from '#lib/dates.ts';
+import { int, isMealType, isPast, PAST_MESSAGE, str, timeField, todayLocal } from '#lib/server/forms.ts';
+import { isIsoDate, startOfWeek, weekDays } from '#lib/dates.ts';
 import { MEAL_TYPES } from '#lib/constants.ts';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -11,7 +11,8 @@ export const load: PageServerLoad = async ({ params }) => {
 	const [meals, events] = await Promise.all([mealsBetween(params.date, params.date), eventsBetween(params.date, params.date)]);
 	return {
 		date: params.date,
-		today: today(process.env.APP_TZ),
+		today: todayLocal(),
+		past: isPast(params.date),
 		week: weekDays(startOfWeek(params.date)),
 		meals,
 		events
@@ -21,6 +22,7 @@ export const load: PageServerLoad = async ({ params }) => {
 export const actions: Actions = {
 	addMeal: async ({ params, request }) => {
 		if (!isIsoDate(params.date)) error(404, 'Data nu e validă');
+		if (isPast(params.date)) return fail(400, { message: PAST_MESSAGE });
 		const form = await request.formData();
 		const mealType = str(form, 'meal_type', 20);
 		if (!isMealType(mealType)) return fail(400, { message: 'Alege tipul mesei.' });

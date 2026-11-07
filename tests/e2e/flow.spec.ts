@@ -192,6 +192,56 @@ test('lista de cumpărături adună mesele și evenimentele', async ({ page }) =
 	await page.screenshot({ path: shots('01-plan'), fullPage: true });
 });
 
+function yesterdayIso(): string {
+	const d = new Date(`${todayIso()}T12:00:00Z`);
+	d.setUTCDate(d.getUTCDate() - 1);
+	return d.toISOString().slice(0, 10);
+}
+
+test('zilele trecute nu se pot planifica, iar azi e evidențiat în calendar', async ({ page }) => {
+	await login(page);
+	const ieri = yesterdayIso();
+
+	// pagina zilei de ieri: doar consultare
+	await page.goto(`/zi/${ieri}`);
+	await expect(page.getByText('Zi trecută')).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Adaugă o masă' })).toHaveCount(0);
+	await expect(page.getByRole('link', { name: 'Eveniment în această zi' })).toHaveCount(0);
+
+	// și serverul refuză, chiar dacă cererea e trimisă direct
+	const result = await page.evaluate(async (date) => {
+		const body = new FormData();
+		body.set('meal_type', 'cina');
+		body.set('servings', '2');
+		const res = await fetch(`/zi/${date}?/addMeal`, { method: 'POST', body, headers: { 'x-sveltekit-action': 'true' } });
+		return res.json();
+	}, ieri);
+	expect(result.type).toBe('failure');
+
+	// evenimentul nou nu acceptă o dată din trecut
+	await page.goto('/evenimente/nou');
+	await expect(page.getByLabel('Data')).toHaveAttribute('min', todayIso());
+	await page.getByLabel('Nume').fill('Eveniment în trecut');
+	await page.getByLabel('Data').evaluate((el: HTMLInputElement, d) => {
+		el.removeAttribute('min');
+		el.value = d;
+	}, ieri);
+	await page.getByRole('button', { name: 'Creează evenimentul' }).click();
+	await expect(page.getByRole('alert')).toContainText('Zilele trecute');
+
+	// azi: celula din calendar e marcată distinct
+	await page.goto('/calendar');
+	const azi = page.locator('a.day[aria-current="date"]');
+	await expect(azi).toHaveCount(1);
+	await expect(azi).toHaveClass(/today/);
+	expect(await azi.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgb(79, 107, 74)');
+	await page.screenshot({ path: shots('09-calendar-azi'), fullPage: true });
+
+	// azi rămâne planificabil
+	await page.goto(`/zi/${todayIso()}`);
+	await expect(page.getByRole('button', { name: 'Adaugă o masă' })).toBeVisible();
+});
+
 test('aplicația e instalabilă (manifest și service worker)', async ({ page, request }) => {
 	const manifest = await request.get('/manifest.webmanifest');
 	expect(manifest.ok()).toBe(true);

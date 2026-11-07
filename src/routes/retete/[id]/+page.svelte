@@ -74,7 +74,7 @@
 			<h2>Adaugă în plan</h2>
 			{#if form?.planError}<p class="form-error">{form.planError}</p>{/if}
 			<div class="grid2">
-				<label class="field">Ziua<input type="date" name="date" defaultValue={data.today} required /></label>
+				<label class="field">Ziua<input type="date" name="date" min={data.today} defaultValue={data.today} required /></label>
 				<label class="field">Masa
 					<select name="meal_type">
 						{#each MEAL_TYPES as m (m.id)}<option value={m.id} selected={m.id === 'pranz'}>{m.label}</option>{/each}

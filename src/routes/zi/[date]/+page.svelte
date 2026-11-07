@@ -35,7 +35,7 @@
 
 <nav class="strip" aria-label="Zilele săptămânii">
 	{#each data.week as d, i (d)}
-		<a href={`/zi/${d}`} class:on={d === data.date} class:today={d === data.today} aria-current={d === data.date ? 'page' : undefined}>
+		<a href={`/zi/${d}`} class:on={d === data.date} class:today={d === data.today} class:past={d < data.today} aria-current={d === data.date ? 'page' : undefined}>
 			<span class="wd">{WEEKDAYS_SHORT[i]}</span>
 			<span class="dn">{dayNumber(d)}</span>
 		</a>
@@ -72,11 +72,15 @@
 		</a>
 	{/each}
 
-	{#if !data.meals.length && !data.events.length && !adding}
-		<div class="empty">Ziua e liberă. Adaugă prima masă.</div>
+	{#if data.past}
+		<p class="past-note">Zi trecută: o poți consulta, dar nu se mai poate planifica.</p>
 	{/if}
 
-	{#if adding}
+	{#if !data.meals.length && !data.events.length && !adding}
+		<div class="empty">{data.past ? 'Nu a fost nimic planificat în această zi.' : 'Ziua e liberă. Adaugă prima masă.'}</div>
+	{/if}
+
+	{#if adding && !data.past}
 		<form method="POST" action="?/addMeal" class="card stack" use:enhance>
 			<h2>Masă nouă</h2>
 			{#if form?.message}<p class="form-error">{form.message}</p>{/if}
@@ -97,7 +101,7 @@
 				<button type="button" class="btn secondary" onclick={() => (adding = false)}>Renunță</button>
 			</div>
 		</form>
-	{:else}
+	{:else if !data.past}
 		<button class="btn dashed" onclick={() => (adding = true)}><Icon name="plus" size={18} stroke={2} />Adaugă o masă</button>
 		<a class="btn secondary" href={`/evenimente/nou?data=${data.date}`}><Icon name="star" size={18} />Eveniment în această zi</a>
 	{/if}
@@ -125,6 +129,18 @@
 	}
 	.strip a.today {
 		border-color: var(--accent);
+		border-width: 2px;
+	}
+	.strip a.past {
+		color: var(--muted);
+		background: var(--ground);
+	}
+	.past-note {
+		background: var(--ground);
+		color: var(--muted);
+		border-radius: 12px;
+		padding: 10px 12px;
+		font-size: 14px;
 	}
 	.strip a.on {
 		background: var(--accent);

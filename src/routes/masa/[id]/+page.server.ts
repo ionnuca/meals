@@ -2,7 +2,7 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import { and, eq, inArray } from 'drizzle-orm';
 import { getDb, schema } from '#lib/server/db/index.ts';
 import { getMeal, listRecipes, nextDishPosition } from '#lib/server/data.ts';
-import { id as parseId, int, isMealType, str, timeField } from '#lib/server/forms.ts';
+import { id as parseId, int, isMealType, isPast, PAST_MESSAGE, str, timeField } from '#lib/server/forms.ts';
 import type { Actions, PageServerLoad } from './$types';
 
 async function requireMeal(idParam: string) {
@@ -10,6 +10,12 @@ async function requireMeal(idParam: string) {
 	const meal = mealId ? await getMeal(mealId) : null;
 	if (!meal) error(404, 'Masa nu există');
 	return meal;
+}
+
+/** Masa poate fi modificată doar dacă e de azi sau din viitor. */
+async function requireEditableMeal(idParam: string) {
+	const meal = await requireMeal(idParam);
+	return isPast(meal.date) ? null : meal;
 }
 
 export const load: PageServerLoad = async ({ params }) => {
@@ -25,12 +31,13 @@ export const load: PageServerLoad = async ({ params }) => {
 			.filter((i) => i.recipeId === d.recipeId)
 			.map((i) => ({ name: i.name, quantity: i.quantity, unit: i.unit, aisle: i.aisle, recipeServings: d.servings, source: d.name }))
 	);
-	return { meal, raw, recipes: await listRecipes() };
+	return { meal, raw, past: isPast(meal.date), recipes: await listRecipes() };
 };
 
 export const actions: Actions = {
 	servings: async ({ params, request }) => {
-		const meal = await requireMeal(params.id);
+		const meal = await requireEditableMeal(params.id);
+		if (!meal) return fail(400, { message: PAST_MESSAGE });
 		const form = await request.formData();
 		const servings = int(form, 'servings', 1, 100, meal.servings);
 		await getDb().update(schema.meals).set({ servings }).where(eq(schema.meals.id, meal.id));
@@ -38,7 +45,8 @@ export const actions: Actions = {
 	},
 
 	update: async ({ params, request }) => {
-		const meal = await requireMeal(params.id);
+		const meal = await requireEditableMeal(params.id);
+		if (!meal) return fail(400, { message: PAST_MESSAGE });
 		const form = await request.formData();
 		const mealType = str(form, 'meal_type', 20);
 		if (!isMealType(mealType)) return fail(400, { message: 'Tip de masă invalid.' });
@@ -50,7 +58,8 @@ export const actions: Actions = {
 	},
 
 	addDish: async ({ params, request }) => {
-		const meal = await requireMeal(params.id);
+		const meal = await requireEditableMeal(params.id);
+		if (!meal) return fail(400, { message: PAST_MESSAGE });
 		const form = await request.formData();
 		const recipeId = parseId(form.get('recipe_id'));
 		if (!recipeId) return fail(400, { message: 'Alege o rețetă.' });
@@ -62,7 +71,8 @@ export const actions: Actions = {
 	},
 
 	removeDish: async ({ params, request }) => {
-		const meal = await requireMeal(params.id);
+		const meal = await requireEditableMeal(params.id);
+		if (!meal) return fail(400, { message: PAST_MESSAGE });
 		const form = await request.formData();
 		const dishId = parseId(form.get('dish_id'));
 		if (dishId) {
@@ -74,7 +84,8 @@ export const actions: Actions = {
 	},
 
 	delete: async ({ params }) => {
-		const meal = await requireMeal(params.id);
+		const meal = await requireEditableMeal(params.id);
+		if (!meal) return fail(400, { message: PAST_MESSAGE });
 		await getDb().delete(schema.meals).where(eq(schema.meals.id, meal.id));
 		redirect(303, `/zi/${meal.date}`);
 	}

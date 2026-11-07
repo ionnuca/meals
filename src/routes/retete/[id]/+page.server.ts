@@ -2,9 +2,8 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
 import { getDb, schema } from '#lib/server/db/index.ts';
 import { deleteRecipe, getRecipe, nextDishPosition, recipeUsage } from '#lib/server/data.ts';
-import { dateField, id as parseId, int, isMealType, str } from '#lib/server/forms.ts';
+import { dateField, id as parseId, int, isMealType, isPast, PAST_MESSAGE, str, todayLocal } from '#lib/server/forms.ts';
 import { deletePhoto } from '#lib/server/uploads.ts';
-import { today } from '#lib/dates.ts';
 import { MEAL_TYPES } from '#lib/constants.ts';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -12,7 +11,7 @@ export const load: PageServerLoad = async ({ params }) => {
 	const recipeId = parseId(params.id);
 	const recipe = recipeId ? await getRecipe(recipeId) : null;
 	if (!recipe) error(404, 'Rețeta nu există');
-	return { recipe, usage: await recipeUsage(recipe.id), today: today(process.env.APP_TZ) };
+	return { recipe, usage: await recipeUsage(recipe.id), today: todayLocal() };
 };
 
 export const actions: Actions = {
@@ -33,6 +32,7 @@ export const actions: Actions = {
 		const mealType = str(form, 'meal_type', 20);
 		const servings = int(form, 'servings', 1, 100, 2);
 		if (!date || !isMealType(mealType)) return fail(400, { planError: 'Alege ziua și masa.' });
+		if (isPast(date)) return fail(400, { planError: PAST_MESSAGE });
 
 		const db = getDb();
 		const [existing] = await db

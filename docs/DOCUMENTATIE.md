@@ -20,7 +20,15 @@ Este gândită pentru **câțiva utilizatori** (o familie) care împart aceleaș
 
 ### 1.2 Navigare
 
-Bara de jos are patru secțiuni: **Plan**, **Calendar**, **Rețete**, **Cumpărături**. Setările (membrii familiei, parola, ieșirea din cont) se deschid din pictograma roată de pe pagina Plan.
+Bara de jos are patru secțiuni: **Plan**, **Calendar**, **Planificare doar de azi înainte**
+- Mesele și evenimentele se pot crea sau modifica doar pentru ziua de azi și zilele următoare.
+- Zilele, mesele și evenimentele trecute rămân vizibile, dar sunt doar pentru consultare: fără butoane de adăugare, editare, porții sau ștergere.
+- Regula e verificată și pe server, deci o cerere trimisă direct pentru o zi trecută e refuzată.
+- „Azi” se calculează în fusul orar `APP_TZ` (implicit `Europe/Chisinau`).
+- „Copiază săptămâna trecută” copiază doar în zilele de azi înainte.
+- În calendar, ziua de azi e marcată cu verde plin, zilele trecute sunt estompate, iar evenimentele au fundal și contur portocaliu.
+
+**Rețete**, **Cumpărături**. Setările (membrii familiei, parola, ieșirea din cont) se deschid din pictograma roată de pe pagina Plan.
 
 ### 1.3 Funcționalități
 

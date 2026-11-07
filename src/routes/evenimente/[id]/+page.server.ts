@@ -2,7 +2,7 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { getDb, schema } from '#lib/server/db/index.ts';
 import { getEvent, ingredientCatalog, listRecipes } from '#lib/server/data.ts';
-import { aisleField, dateField, id as parseId, int, isSection, str, timeField, unitField } from '#lib/server/forms.ts';
+import { aisleField, dateField, id as parseId, int, isPast, isSection, PAST_MESSAGE, str, timeField, todayLocal, unitField } from '#lib/server/forms.ts';
 import { parseQuantity } from '#lib/units.ts';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -11,6 +11,12 @@ async function requireEvent(idParam: string) {
 	const ev = eventId ? await getEvent(eventId) : null;
 	if (!ev) error(404, 'Evenimentul nu există');
 	return ev;
+}
+
+/** Evenimentul poate fi modificat doar dacă e de azi sau din viitor. */
+async function requireEditableEvent(idParam: string) {
+	const ev = await requireEvent(idParam);
+	return isPast(ev.date) ? null : ev;
 }
 
 async function nextPosition(eventId: number): Promise<number> {
@@ -35,12 +41,13 @@ export const load: PageServerLoad = async ({ params }) => {
 			: [{ name: it.name, quantity: it.quantity, unit: it.unit, aisle: it.aisle, recipeServings: 1, scale: false, source: it.name }]
 	);
 	const [recipes, catalog] = await Promise.all([listRecipes(), ingredientCatalog()]);
-	return { event, raw, recipes, catalog };
+	return { event, raw, recipes, catalog, past: isPast(event.date), today: todayLocal() };
 };
 
 export const actions: Actions = {
 	guests: async ({ params, request }) => {
-		const ev = await requireEvent(params.id);
+		const ev = await requireEditableEvent(params.id);
+		if (!ev) return fail(400, { message: PAST_MESSAGE });
 		const form = await request.formData();
 		await getDb()
 			.update(schema.events)
@@ -50,11 +57,13 @@ export const actions: Actions = {
 	},
 
 	update: async ({ params, request }) => {
-		const ev = await requireEvent(params.id);
+		const ev = await requireEditableEvent(params.id);
+		if (!ev) return fail(400, { message: PAST_MESSAGE });
 		const form = await request.formData();
 		const name = str(form, 'name', 120);
 		const date = dateField(form, 'date');
 		if (!name || !date) return fail(400, { message: 'Numele și data sunt obligatorii.' });
+		if (isPast(date)) return fail(400, { message: PAST_MESSAGE });
 		await getDb()
 			.update(schema.events)
 			.set({ name, date, time: timeField(form, 'time'), note: str(form, 'note', 1000) || null })
@@ -63,7 +72,8 @@ export const actions: Actions = {
 	},
 
 	addRecipe: async ({ params, request }) => {
-		const ev = await requireEvent(params.id);
+		const ev = await requireEditableEvent(params.id);
+		if (!ev) return fail(400, { message: PAST_MESSAGE });
 		const form = await request.formData();
 		const section = str(form, 'section', 20);
 		const recipeId = parseId(form.get('recipe_id'));
@@ -73,7 +83,8 @@ export const actions: Actions = {
 	},
 
 	addProduct: async ({ params, request }) => {
-		const ev = await requireEvent(params.id);
+		const ev = await requireEditableEvent(params.id);
+		if (!ev) return fail(400, { message: PAST_MESSAGE });
 		const form = await request.formData();
 		const section = str(form, 'section', 20);
 		const name = str(form, 'name', 120);
@@ -95,7 +106,8 @@ export const actions: Actions = {
 	},
 
 	removeItem: async ({ params, request }) => {
-		const ev = await requireEvent(params.id);
+		const ev = await requireEditableEvent(params.id);
+		if (!ev) return fail(400, { message: PAST_MESSAGE });
 		const form = await request.formData();
 		const itemId = parseId(form.get('item_id'));
 		if (itemId) {
@@ -107,7 +119,8 @@ export const actions: Actions = {
 	},
 
 	delete: async ({ params }) => {
-		const ev = await requireEvent(params.id);
+		const ev = await requireEditableEvent(params.id);
+		if (!ev) return fail(400, { message: PAST_MESSAGE });
 		await getDb().delete(schema.events).where(eq(schema.events.id, ev.id));
 		redirect(303, `/calendar?luna=${ev.date.slice(0, 7)}`);
 	}

@@ -31,8 +31,10 @@
 				class="day"
 				class:ev={eventDays.has(c)}
 				class:today={c === data.today}
+				class:past={c < data.today}
+				aria-current={c === data.today ? 'date' : undefined}
 				role="gridcell"
-				aria-label={`${dayNumber(c)}${eventDays.has(c) ? ', eveniment' : ''}${planned.has(c) ? ', planificat' : ''}`}
+				aria-label={`${dayNumber(c)}${c === data.today ? ', azi' : ''}${eventDays.has(c) ? ', eveniment' : ''}${planned.has(c) ? ', planificat' : ''}`}
 			>
 				{dayNumber(c)}
 				{#if planned.has(c)}<span class="dot"></span>{/if}
@@ -44,6 +46,7 @@
 </div>
 
 <div class="legend small muted">
+	<span class="row"><span class="sq today-sq"></span>azi</span>
 	<span class="row"><span class="dot static"></span>zi planificată</span>
 	<span class="row"><span class="sq"></span>eveniment</span>
 </div>
@@ -99,14 +102,30 @@
 		background: var(--ground);
 		color: var(--ink);
 	}
-	.day.today {
-		box-shadow: inset 0 0 0 2px var(--accent);
-		font-weight: 600;
+	.day.past {
+		color: #9a9f94;
 	}
 	.day.ev {
-		background: var(--event);
-		color: #fff;
+		background: var(--event-soft);
+		color: var(--event-ink);
+		box-shadow: inset 0 0 0 1.5px var(--event);
 		font-weight: 600;
+	}
+	.day.ev.past {
+		opacity: 0.6;
+	}
+	/* azi: plin, în culoarea aplicației, ca să se vadă imediat */
+	.day.today {
+		background: var(--accent);
+		color: #fff;
+		font-weight: 700;
+	}
+	.day.today:hover {
+		background: var(--accent-dark);
+		color: #fff;
+	}
+	.day.today.ev {
+		box-shadow: inset 0 0 0 3px var(--event);
 	}
 	.dot {
 		width: 5px;
@@ -114,7 +133,7 @@
 		border-radius: 3px;
 		background: var(--accent);
 	}
-	.day.ev .dot {
+	.day.today .dot {
 		background: #fff;
 	}
 	.legend {
@@ -126,10 +145,15 @@
 		gap: 6px;
 	}
 	.sq {
-		width: 10px;
-		height: 10px;
-		border-radius: 3px;
-		background: var(--event);
+		width: 12px;
+		height: 12px;
+		border-radius: 4px;
+		background: var(--event-soft);
+		box-shadow: inset 0 0 0 1.5px var(--event);
+	}
+	.sq.today-sq {
+		background: var(--accent);
+		box-shadow: none;
 	}
 	.ev-card {
 		display: flex;

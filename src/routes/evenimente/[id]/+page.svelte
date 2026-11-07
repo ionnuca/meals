@@ -59,7 +59,7 @@
 
 <PageHeader title={ev.name} eyebrow="Eveniment" back={`/calendar?luna=${ev.date.slice(0, 7)}`}>
 	{#snippet actions()}
-		<button class="icon-btn" aria-label="Editează evenimentul" onclick={() => (editing = !editing)}><Icon name="edit" size={18} /></button>
+		{#if !data.past}<button class="icon-btn" aria-label="Editează evenimentul" onclick={() => (editing = !editing)}><Icon name="edit" size={18} /></button>{/if}
 	{/snippet}
 </PageHeader>
 
@@ -70,7 +70,11 @@
 
 {#if ev.note}<p class="muted note">{ev.note}</p>{/if}
 
-{#if editing}
+{#if data.past}
+	<p class="past-note">Eveniment trecut: îl poți consulta, dar nu se mai poate modifica.</p>
+{/if}
+
+{#if editing && !data.past}
 	<form
 		method="POST"
 		action="?/update"
@@ -83,7 +87,7 @@
 	>
 		<label class="field">Nume<input type="text" name="name" required maxlength="120" defaultValue={ev.name} /></label>
 		<div class="grid2">
-			<label class="field">Data<input type="date" name="date" required defaultValue={ev.date} /></label>
+			<label class="field">Data<input type="date" name="date" required min={data.today} defaultValue={ev.date} /></label>
 			<label class="field">Ora<input type="time" name="time" defaultValue={ev.time ?? ''} /></label>
 		</div>
 		<label class="field">Note<textarea name="note" rows="3" defaultValue={ev.note ?? ''}></textarea></label>
@@ -96,7 +100,7 @@
 		<p class="label">Persoane</p>
 		<p class="big">{guests} {guests === 1 ? 'persoană' : 'persoane'}</p>
 	</div>
-	<Stepper bind:value={guests} name="guests" min={1} max={500} label="persoane" onchange={onGuests} inverted />
+	{#if !data.past}<Stepper bind:value={guests} name="guests" min={1} max={500} label="persoane" onchange={onGuests} inverted />{/if}
 </form>
 <p class="small muted hint">Rețetele se scalează după numărul de persoane; băuturile și produsele rămân la cantitatea scrisă.</p>
 
@@ -106,7 +110,7 @@
 	<section class="block">
 		<div class="spread">
 			<h2>{s.label}</h2>
-			<button class="btn small dashed" onclick={() => openAdd(s.id)} aria-label={`Adaugă la ${s.label}`}><Icon name="plus" size={14} stroke={2.4} />Adaugă</button>
+			{#if !data.past}<button class="btn small dashed" onclick={() => openAdd(s.id)} aria-label={`Adaugă la ${s.label}`}><Icon name="plus" size={14} stroke={2.4} />Adaugă</button>{/if}
 		</div>
 		{#if s.items.some((i) => i.recipeId)}
 			<ul class="tiles">
@@ -116,10 +120,10 @@
 							<Photo photo={it.photo} category={it.category ?? 'fel_principal'} size={84} width="100%" radius={12} alt={it.name} />
 							<span class="tname">{it.name}</span>
 						</a>
-						<form method="POST" action="?/removeItem" use:enhance class="rm">
+						{#if !data.past}<form method="POST" action="?/removeItem" use:enhance class="rm">
 							<input type="hidden" name="item_id" value={it.id} />
 							<button aria-label={`Scoate ${it.name}`}><Icon name="close" size={14} stroke={2.4} /></button>
-						</form>
+						</form>{/if}
 					</li>
 				{/each}
 			</ul>
@@ -129,19 +133,22 @@
 				<span class="pic"><Icon name={s.id === 'bauturi' ? 'glass' : 'cart'} size={16} /></span>
 				<span class="grow">{it.name}</span>
 				<span class="muted">{formatQuantity(it.quantity, it.unit)}</span>
-				<form method="POST" action="?/removeItem" use:enhance>
-					<input type="hidden" name="item_id" value={it.id} />
-					<button class="icon-btn plain" aria-label={`Scoate ${it.name}`}><Icon name="close" size={16} /></button>
-				</form>
+				{#if !data.past}
+					<form method="POST" action="?/removeItem" use:enhance>
+						<input type="hidden" name="item_id" value={it.id} />
+						<button class="icon-btn plain" aria-label={`Scoate ${it.name}`}><Icon name="close" size={16} /></button>
+					</form>
+				{/if}
 			</div>
 		{/each}
 	</section>
 {/each}
 
-{#if !ev.items.length && !adding}
+{#if !ev.items.length && !adding && !data.past}
 	<div class="empty block">Adaugă aperitive, feluri principale, deserturi și băuturi.</div>
 {/if}
 
+{#if !data.past}
 <section class="block">
 	{#if adding}
 		<div class="card stack">
@@ -202,6 +209,7 @@
 		<button class="btn dashed block" onclick={() => openAdd('principale')}><Icon name="plus" size={18} stroke={2} />Adaugă fel sau băutură</button>
 	{/if}
 </section>
+{/if}
 
 <section class="block stack">
 	<div class="spread">
@@ -223,6 +231,7 @@
 	{/if}
 </section>
 
+{#if !data.past}
 <form
 	method="POST"
 	action="?/delete"
@@ -233,8 +242,17 @@
 >
 	<button class="btn danger block"><Icon name="trash" size={18} />Șterge evenimentul</button>
 </form>
+{/if}
 
 <style>
+	.past-note {
+		background: var(--ground);
+		color: var(--muted);
+		border-radius: 12px;
+		padding: 10px 12px;
+		font-size: 14px;
+		margin-bottom: 12px;
+	}
 	.chips {
 		display: flex;
 		gap: 8px;

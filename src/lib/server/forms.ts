@@ -1,5 +1,5 @@
 import { AISLES, EVENT_SECTIONS, MEAL_TYPES, RECIPE_CATEGORIES, UNITS } from '../constants';
-import { isIsoDate, isTime } from '../dates';
+import { isIsoDate, isTime, today } from '../dates';
 import { parseQuantity } from '../units';
 import type { RecipeInput } from './data';
 
@@ -81,4 +81,18 @@ export function parseRecipeForm(form: FormData): { data: RecipeInput } | { error
 	const badQty = form.getAll('ing_qty').some((q, i) => names[i] && String(q).trim() && parseQuantity(q) === null);
 	if (badQty) return { error: 'O cantitate nu e un număr valid (folosește de ex. 250, 1,5 sau 1/2).', data };
 	return { data };
+}
+
+// ---------- Planificarea doar de azi înainte ----------
+
+export const PAST_MESSAGE = 'Zilele trecute nu mai pot fi planificate sau modificate.';
+
+/** Data de azi în fusul orar al aplicației. */
+export function todayLocal(): string {
+	return today(process.env.APP_TZ);
+}
+
+/** Adevărat pentru zilele dinaintea zilei de azi (azi se poate planifica). */
+export function isPast(date: string): boolean {
+	return date < todayLocal();
 }

@@ -21,6 +21,7 @@
 	);
 	const isEmpty = $derived(data.meals.length === 0 && data.events.length === 0);
 	const thisWeek = $derived(data.days.includes(data.today));
+	const weekPast = $derived(data.sunday < data.today);
 </script>
 
 <svelte:head><title>Plan · Mese</title></svelte:head>
@@ -38,7 +39,7 @@
 	<a class="icon-btn plain" href="/setari" aria-label="Setări" style="margin-left:auto"><Icon name="settings" size={20} /></a>
 </div>
 
-{#if isEmpty}
+{#if isEmpty && !weekPast}
 	<div class="empty stack">
 		<p>Săptămâna aceasta nu are încă nimic planificat.</p>
 		<form method="POST" action="?/copyPrevious" use:enhance>
@@ -50,7 +51,7 @@
 
 <div class="stack days">
 	{#each days as d (d.date)}
-		<a class="card day" href={`/zi/${d.date}`} class:today={d.date === data.today}>
+		<a class="card day" href={`/zi/${d.date}`} class:today={d.date === data.today} class:past={d.date < data.today}>
 			<div class="spread">
 				<h2>{WEEKDAYS[weekdayIndex(d.date)]}</h2>
 				<span class="small muted">{d.date === data.today ? 'azi · ' : ''}{formatDayShort(d.date)}</span>
@@ -68,7 +69,7 @@
 					{/each}
 				</dl>
 			{:else if !d.events.length}
-				<p class="small muted">Nimic planificat · atinge ca să adaugi</p>
+				<p class="small muted">{d.date < data.today ? 'Nimic planificat' : 'Nimic planificat · atinge ca să adaugi'}</p>
 			{/if}
 			{#each d.events as e (e.id)}
 				<div class="event">
@@ -99,6 +100,10 @@
 	.day:hover {
 		border-color: var(--line-strong);
 		color: var(--ink);
+	}
+	.day.past {
+		background: var(--ground);
+		opacity: 0.8;
 	}
 	.day.today {
 		border-color: var(--accent);

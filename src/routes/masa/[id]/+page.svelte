@@ -52,11 +52,15 @@
 
 <PageHeader title={meal.label} eyebrow={`${formatDayLong(meal.date)}${meal.time ? ` · ${meal.time}` : ''}`} back={`/zi/${meal.date}`}>
 	{#snippet actions()}
-		<button class="icon-btn" aria-label="Editează masa" onclick={() => (editing = !editing)}><Icon name="edit" size={18} /></button>
+		{#if !data.past}<button class="icon-btn" aria-label="Editează masa" onclick={() => (editing = !editing)}><Icon name="edit" size={18} /></button>{/if}
 	{/snippet}
 </PageHeader>
 
-{#if editing}
+{#if data.past}
+	<p class="past-note">Masă dintr-o zi trecută: o poți consulta, dar nu se mai poate modifica.</p>
+{/if}
+
+{#if editing && !data.past}
 	<form
 		method="POST"
 		action="?/update"
@@ -94,7 +98,7 @@
 		<p class="label">Porții pentru această masă</p>
 		<p class="big">{servings} {servings === 1 ? 'porție' : 'porții'} <span class="state" aria-live="polite">{saveState}</span></p>
 	</div>
-	<Stepper bind:value={servings} name="servings" min={1} max={100} onchange={onServings} inverted />
+	{#if !data.past}<Stepper bind:value={servings} name="servings" min={1} max={100} onchange={onServings} inverted />{/if}
 </form>
 
 {#if meal.note}<p class="muted small" style="margin-top:10px">{meal.note}</p>{/if}
@@ -111,16 +115,18 @@
 					<p class="small muted">{categoryLabel(d.category)} · rețetă pentru {d.servings}</p>
 				</div>
 			</a>
-			<form method="POST" action="?/removeDish" use:enhance>
-				<input type="hidden" name="dish_id" value={d.id} />
-				<button class="icon-btn plain" aria-label={`Scoate ${d.name}`}><Icon name="close" size={18} /></button>
-			</form>
+			{#if !data.past}
+				<form method="POST" action="?/removeDish" use:enhance>
+					<input type="hidden" name="dish_id" value={d.id} />
+					<button class="icon-btn plain" aria-label={`Scoate ${d.name}`}><Icon name="close" size={18} /></button>
+				</form>
+			{/if}
 		</div>
 	{:else}
 		<p class="muted">Masa nu are încă feluri.</p>
 	{/each}
 
-	{#if picking}
+	{#if picking && !data.past}
 		<div class="card stack picker">
 			<div class="spread">
 				<h3>Alege o rețetă</h3>
@@ -145,7 +151,7 @@
 				{/each}
 			</ul>
 		</div>
-	{:else}
+	{:else if !data.past}
 		<button class="btn dashed" onclick={() => (picking = true)}><Icon name="plus" size={18} stroke={2} />Adaugă un fel</button>
 	{/if}
 </section>
@@ -168,6 +174,7 @@
 	{/if}
 </section>
 
+{#if !data.past}
 <form
 	method="POST"
 	action="?/delete"
@@ -178,8 +185,17 @@
 >
 	<button class="btn danger block"><Icon name="trash" size={18} />Șterge masa</button>
 </form>
+{/if}
 
 <style>
+	.past-note {
+		background: var(--ground);
+		color: var(--muted);
+		border-radius: 12px;
+		padding: 10px 12px;
+		font-size: 14px;
+		margin-bottom: 12px;
+	}
 	.servings {
 		background: var(--accent);
 		color: #fff;

@@ -19,7 +19,7 @@
 		<input type="text" name="name" required maxlength="120" placeholder="de ex. Cina cu prietenii" defaultValue={form?.values?.name ?? ''} />
 	</label>
 	<div class="grid2">
-		<label class="field">Data<input type="date" name="date" required defaultValue={form?.values?.date ?? data.date} /></label>
+		<label class="field">Data<input type="date" name="date" required min={data.today} defaultValue={form?.values?.date ?? data.date} /></label>
 		<label class="field">Ora<input type="time" name="time" defaultValue={form?.values?.time ?? '19:00'} /></label>
 	</div>
 	<div class="field-like">

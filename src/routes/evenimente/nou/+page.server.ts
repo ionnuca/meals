@@ -1,12 +1,13 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { getDb, schema } from '#lib/server/db/index.ts';
-import { dateField, int, str, timeField } from '#lib/server/forms.ts';
-import { isIsoDate, today } from '#lib/dates.ts';
+import { dateField, int, isPast, PAST_MESSAGE, str, timeField, todayLocal } from '#lib/server/forms.ts';
+import { isIsoDate } from '#lib/dates.ts';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ url }) => {
 	const d = url.searchParams.get('data');
-	return { date: isIsoDate(d) ? d : today(process.env.APP_TZ) };
+	const now = todayLocal();
+	return { date: isIsoDate(d) && d >= now ? d : now, today: now };
 };
 
 export const actions: Actions = {
@@ -21,6 +22,7 @@ export const actions: Actions = {
 		};
 		if (!values.name) return fail(400, { message: 'Scrie numele evenimentului.', values });
 		if (!values.date) return fail(400, { message: 'Alege data.', values });
+		if (isPast(values.date)) return fail(400, { message: PAST_MESSAGE, values });
 		const [row] = await getDb()
 			.insert(schema.events)
 			.values({ ...values, date: values.date })
