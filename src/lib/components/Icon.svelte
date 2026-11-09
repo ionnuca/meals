@@ -2,7 +2,7 @@
 	type Name =
 		| 'plan' | 'calendar' | 'book' | 'cart' | 'left' | 'right' | 'plus' | 'minus' | 'check'
 		| 'star' | 'person' | 'trash' | 'edit' | 'settings' | 'share' | 'camera' | 'clock'
-		| 'bowl' | 'plate' | 'glass' | 'search' | 'logout' | 'copy' | 'close';
+		| 'bowl' | 'plate' | 'glass' | 'search' | 'logout' | 'copy' | 'close' | 'refresh';
 
 	let { name, size = 20, stroke = 1.8 }: { name: Name; size?: number; stroke?: number } = $props();
 </script>
@@ -42,5 +42,6 @@
 	{:else if name === 'logout'}<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 8l-4 4 4 4M6 12h10" />
 	{:else if name === 'copy'}<rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3" />
 	{:else if name === 'close'}<path d="M6 6l12 12M18 6L6 18" />
+	{:else if name === 'refresh'}<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" /><path d="M19.5 4.5v3.8h-3.8" />
 	{/if}
 </svg>

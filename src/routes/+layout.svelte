@@ -4,6 +4,7 @@
 	import '../app.css';
 	import { page, navigating } from '$app/state';
 	import Icon from '#lib/components/Icon.svelte';
+	import PullToRefresh from '#lib/components/PullToRefresh.svelte';
 	import type { LayoutProps } from './$types';
 
 	let { children, data }: LayoutProps = $props();
@@ -34,6 +35,8 @@
 <svelte:head>
 	<title>Mese</title>
 </svelte:head>
+
+{#if data.user}<PullToRefresh />{/if}
 
 {#if navigating.to}<div class="progress" aria-hidden="true"></div>{/if}
 

@@ -92,6 +92,7 @@ Bara de jos are patru secțiuni: **Plan**, **Calendar**, **Planificare doar de a
 
 **Aplicație instalabilă (PWA)**
 - Se poate instala pe ecranul principal al telefonului („Adaugă pe ecranul principal”).
+- Tragerea în jos din partea de sus a ecranului reîmprospătează datele paginii (de exemplu, produsele adăugate de alt membru al familiei) și verifică dacă există o versiune nouă a aplicației. Funcționează și în aplicația instalată, unde browserul nu oferă gestul.
 - Fișierele aplicației sunt păstrate local.
 - Paginile deschise recent se pot revedea fără conexiune; un banner anunță lipsa conexiunii.
 - Modificările (de exemplu bifele) necesită conexiune.

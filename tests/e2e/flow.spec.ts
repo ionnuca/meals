@@ -303,6 +303,36 @@ test('zilele trecute nu se pot planifica, iar azi e evidențiat în calendar', a
 	await expect(page.getByRole('button', { name: 'Adaugă o masă' })).toBeVisible();
 });
 
+test('tragerea în jos reîmprospătează datele paginii', async ({ page }) => {
+	await login(page);
+	await page.goto('/cumparaturi');
+	await expect(page.locator('.item', { hasText: 'Lapte' })).toHaveCount(0);
+
+	// altcineva din familie adaugă un produs în aceeași listă
+	const period = await page.locator('input[name="period"]').first().inputValue();
+	const res = await page.request.post('/cumparaturi?/addExtra', {
+		headers: { origin: 'http://localhost:4173', 'x-sveltekit-action': 'true' },
+		multipart: { period, name: 'Lapte', quantity: '2', unit: 'l', aisle: 'Lactate și ouă' }
+	});
+	expect((await res.json()).type).toBe('success');
+	await expect(page.locator('.item', { hasText: 'Lapte' })).toHaveCount(0);
+
+	// gestul: deget pus sus și tras în jos, ca pe telefon
+	await page.evaluate(() => window.scrollTo(0, 0));
+	const cdp = await page.context().newCDPSession(page);
+	const touch = (type: 'touchStart' | 'touchMove' | 'touchEnd', y: number) =>
+		cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x: 200, y }] });
+	await touch('touchStart', 120);
+	for (let y = 140; y <= 420; y += 20) await touch('touchMove', y);
+	await expect(page.locator('.ptr.visible')).toBeVisible();
+	await touch('touchEnd', 420);
+
+	await expect(page.locator('.item', { hasText: 'Lapte' })).toContainText('2 l');
+	// pagina nu s-a reîncărcat complet: bifele și starea locală rămân
+	await expect(page).toHaveURL(/\/cumparaturi/);
+	await expect(page.locator('.ptr.visible')).toHaveCount(0);
+});
+
 test('aplicația e instalabilă (manifest și service worker)', async ({ page, request }) => {
 	const manifest = await request.get('/manifest.webmanifest');
 	expect(manifest.ok()).toBe(true);

@@ -30,6 +30,8 @@
 
 html {
 	-webkit-text-size-adjust: 100%;
+	/* gestul de reîmprospătare e al aplicației; fără efectul de tragere al browserului */
+	overscroll-behavior-y: contain;
 }
 
 body {
