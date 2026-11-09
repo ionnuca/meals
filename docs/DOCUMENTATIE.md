@@ -48,6 +48,15 @@ Bara de jos are patru secțiuni: **Plan**, **Calendar**, **Planificare doar de a
 - Ștergerea unei rețete avertizează dacă rețeta e folosită în mese sau evenimente.
 - Rețetele fără poză afișează un desen colorat după categorie.
 
+**Catalogul de produse** (Rețete → Produse, sau din Setări)
+- Peste 180 de produse uzuale sunt predefinite, fiecare cu raionul și unitatea implicită. La actualizare se adaugă automat și produsele folosite deja în rețete.
+- Se pot adăuga, căuta, filtra pe raioane, redenumi și șterge produse.
+- Redenumirea sau mutarea unui produs în alt raion se vede imediat în toate rețetele care îl folosesc.
+- Un produs folosit în rețete nu poate fi șters.
+- În rețetă, produsul se alege dintr-o listă derulantă cu căutare (fără diacritice, după început sau după orice parte a numelui). La alegere se preiau unitatea și raionul lui.
+- Un produs care lipsește se poate adăuga direct din rețetă („Produs nou: …”), alegându-i raionul. Același tip de listă se folosește la produsele evenimentelor și la adăugirile manuale din lista de cumpărături.
+- Unitatea de măsură se alege peste tot dintr-o listă fixă.
+
 **Plan săptămânal**
 - Cele 7 zile ale săptămânii, de luni până duminică, cu pozele felurilor, mesele și evenimentele fiecărei zile; ziua de azi este evidențiată.
 - Navigare între săptămâni și link direct la lista de cumpărături a săptămânii.
@@ -163,7 +172,8 @@ deploy/                        șabloane pentru server (compose, Caddy, .env, ba
 users ─┐
        └─< sessions
 
-recipes ─< recipe_ingredients
+products ─< recipe_ingredients
+recipes  ─< recipe_ingredients
    ▲  ▲
    │  └──────────────┐
 meals ─< meal_dishes │
@@ -179,7 +189,8 @@ shopping_extras   produse adăugate manual pe perioadă
 | `users` | email unic, nume, `password_hash` (`scrypt$N$r$p$salt$hash`) |
 | `sessions` | `id` = SHA-256 al tokenului din cookie, `user_id`, `expires_at` |
 | `recipes` | nume, categorie, `servings` (porții de bază), `prep_minutes`, `instructions`, `photo` (nume fișier) |
-| `recipe_ingredients` | `recipe_id`, poziție, nume, `quantity` (double, opțional), unitate, raion |
+| `products` | catalogul: nume unic (fără diferențe de majuscule, index pe `lower(name)`), raion, unitate implicită |
+| `recipe_ingredients` | `recipe_id`, `product_id` (catalog), poziție, nume și raion (copiate din produs și ținute la zi), `quantity` (double, opțional), unitate |
 | `meals` | `date`, `meal_type`, `time` (HH:MM), `servings`, notă |
 | `meal_dishes` | `meal_id`, `recipe_id`, poziție |
 | `events` | `date`, `time`, nume, `guests`, notă |

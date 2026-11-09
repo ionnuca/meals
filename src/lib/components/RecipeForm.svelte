@@ -2,10 +2,13 @@
 	import { enhance } from '$app/forms';
 	import Icon from './Icon.svelte';
 	import Photo from './Photo.svelte';
-	import { AISLES, RECIPE_CATEGORIES, UNITS } from '../constants';
+	import ProductPicker from './ProductPicker.svelte';
+	import UnitSelect from './UnitSelect.svelte';
+	import { AISLES, RECIPE_CATEGORIES } from '../constants';
 	import { formatNumber } from '../units';
 
-	type Ing = { name: string; quantity: number | null; unit: string | null; aisle: string | null };
+	type Ing = { productId?: number | null; name: string; quantity: number | null; unit: string | null; aisle: string | null };
+	type Product = { id: number; name: string; aisle: string; unit: string };
 	type Initial = {
 		name: string;
 		category: string;
@@ -21,18 +24,19 @@
 		catalog,
 		error = '',
 		submitLabel = 'Salvează'
-	}: { initial: Initial; catalog: { name: string; aisle: string | null }[]; error?: string; submitLabel?: string } = $props();
+	}: { initial: Initial; catalog: Product[]; error?: string; submitLabel?: string } = $props();
 
 	let uid = 0;
-	type Row = { key: number; name: string; qty: string; unit: string; aisle: string };
+	type Row = { key: number; productId: number | null; name: string; qty: string; unit: string; aisle: string };
 	const toRow = (i: Ing): Row => ({
 		key: uid++,
+		productId: i.productId ?? null,
 		name: i.name,
 		qty: i.quantity === null ? '' : formatNumber(i.quantity, 3),
 		unit: i.unit ?? '',
 		aisle: i.aisle ?? ''
 	});
-	const blank = (): Row => ({ key: uid++, name: '', qty: '', unit: 'g', aisle: '' });
+	const blank = (): Row => ({ key: uid++, productId: null, name: '', qty: '', unit: 'g', aisle: '' });
 
 	// svelte-ignore state_referenced_locally
 	let rows = $state<Row[]>(initial.ingredients.length ? initial.ingredients.map(toRow) : [blank(), blank(), blank()]);
@@ -52,12 +56,13 @@
 	let busy = $state(false);
 	let photoNote = $state('');
 
-	const aisleByName = $derived(new Map(catalog.map((c) => [c.name.toLowerCase(), c.aisle])));
-
-	function onName(row: Row) {
-		if (!row.aisle) {
-			const a = aisleByName.get(row.name.trim().toLowerCase());
-			if (a) row.aisle = a;
+	/** La alegerea unui produs se preiau unitatea și raionul lui; pentru un produs nou se alege raionul în rând. */
+	function onPick(row: Row, p: Product | null) {
+		if (p) {
+			row.unit = p.unit;
+			row.aisle = p.aisle;
+		} else if (!row.aisle) {
+			row.aisle = '';
 		}
 	}
 
@@ -143,18 +148,32 @@
 
 	<section class="stack">
 		<h2>Ingrediente</h2>
-		<datalist id="ing-names">{#each catalog as c (c.name)}<option value={c.name}></option>{/each}</datalist>
-		<datalist id="ing-units">{#each UNITS as u (u)}<option value={u}></option>{/each}</datalist>
+		<p class="small muted">Alege produsele din catalog (<a href="/produse">gestionează produsele</a>). Un produs care lipsește se adaugă direct aici.</p>
 		{#each rows as row, i (row.key)}
+			{@const isNew = !row.productId && !!row.name.trim()}
 			<div class="ing card">
-				<input type="text" name="ing_name" list="ing-names" placeholder="Produs" aria-label={`Produsul ${i + 1}`} bind:value={row.name} onchange={() => onName(row)} class="ing-name" />
+				<div class="ing-name">
+					<ProductPicker
+						products={catalog}
+						bind:productId={row.productId}
+						bind:text={row.name}
+						label={`Produsul ${i + 1}`}
+						idName="ing_product"
+						textName="ing_name"
+						onpick={(p) => onPick(row, p)}
+					/>
+				</div>
 				<input type="text" name="ing_qty" inputmode="decimal" placeholder="Cant." aria-label={`Cantitatea ${i + 1}`} bind:value={row.qty} class="ing-qty" />
-				<input type="text" name="ing_unit" list="ing-units" placeholder="unit." aria-label={`Unitatea ${i + 1}`} bind:value={row.unit} class="ing-unit" />
-				<select name="ing_aisle" aria-label={`Raionul ${i + 1}`} bind:value={row.aisle} class="ing-aisle">
-					<option value="">Raion…</option>
-					{#each AISLES as a (a)}<option value={a}>{a}</option>{/each}
-					{#if row.aisle && !(AISLES as readonly string[]).includes(row.aisle)}<option value={row.aisle}>{row.aisle}</option>{/if}
-				</select>
+				<div class="ing-unit"><UnitSelect name="ing_unit" label={`Unitatea ${i + 1}`} bind:value={row.unit} /></div>
+				{#if isNew}
+					<select name="ing_aisle" aria-label={`Raionul ${i + 1}`} bind:value={row.aisle} class="ing-aisle">
+						<option value="">Raion pentru produsul nou…</option>
+						{#each AISLES as a (a)}<option value={a}>{a}</option>{/each}
+					</select>
+				{:else}
+					<input type="hidden" name="ing_aisle" value={row.aisle} />
+					<span class="ing-aisle small muted aisle-label">{row.aisle}</span>
+				{/if}
 				<button type="button" class="icon-btn plain ing-del" aria-label={`Șterge rândul ${i + 1}`} onclick={() => (rows = rows.filter((r) => r.key !== row.key))}>
 					<Icon name="close" size={18} />
 				</button>
@@ -193,7 +212,7 @@
 	}
 	.ing {
 		display: grid;
-		grid-template-columns: minmax(0, 1fr) 76px 76px 44px;
+		grid-template-columns: 76px 112px minmax(0, 1fr) 44px;
 		grid-template-areas: 'name name name del' 'qty unit aisle aisle';
 		gap: 8px;
 		padding: 10px;
@@ -203,9 +222,15 @@
 	.ing-unit { grid-area: unit; }
 	.ing-aisle { grid-area: aisle; }
 	.ing-del { grid-area: del; }
+	.aisle-label {
+		align-self: center;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
 	@media (min-width: 620px) {
 		.ing {
-			grid-template-columns: minmax(0, 1fr) 76px 86px 150px 44px;
+			grid-template-columns: minmax(0, 1fr) 76px 112px 150px 44px;
 			grid-template-areas: 'name qty unit aisle del';
 		}
 	}

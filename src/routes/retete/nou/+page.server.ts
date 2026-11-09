@@ -1,10 +1,11 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { createRecipe, ingredientCatalog } from '#lib/server/data.ts';
+import { createRecipe } from '#lib/server/data.ts';
+import { listProducts } from '#lib/server/products.ts';
 import { parseRecipeForm } from '#lib/server/forms.ts';
 import { savePhoto } from '#lib/server/uploads.ts';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async () => ({ catalog: await ingredientCatalog() });
+export const load: PageServerLoad = async () => ({ catalog: await listProducts() });
 
 export const actions: Actions = {
 	default: async ({ request }) => {

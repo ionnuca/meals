@@ -51,15 +51,17 @@ export const isMealType = (v: string) => MEAL_TYPES.some((m) => m.id === v);
 export const isCategory = (v: string) => RECIPE_CATEGORIES.some((c) => c.id === v);
 export const isSection = (v: string) => EVENT_SECTIONS.some((s) => s.id === v);
 
-/** Citește formularul de rețetă. Ingredientele vin ca liste paralele: ing_name, ing_qty, ing_unit, ing_aisle. */
+/** Citește formularul de rețetă. Ingredientele vin ca liste paralele: ing_product, ing_name, ing_qty, ing_unit, ing_aisle. */
 export function parseRecipeForm(form: FormData): { data: RecipeInput } | { error: string; data: RecipeInput } {
 	const names = form.getAll('ing_name').map((v) => String(v).trim().slice(0, 120));
+	const productIds = form.getAll('ing_product');
 	const qtys = form.getAll('ing_qty');
 	const units = form.getAll('ing_unit');
 	const aisles = form.getAll('ing_aisle');
 
 	const ingredients = names
 		.map((name, i) => ({
+			productId: id(productIds[i]),
 			name,
 			quantity: parseQuantity(qtys[i]),
 			unit: unitField(units[i]),

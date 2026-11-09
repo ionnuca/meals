@@ -47,6 +47,12 @@
 	</form>
 </section>
 
+<a class="card link-card" href="/produse" style="margin-top:16px">
+	<Icon name="cart" size={20} />
+	<span class="grow"><b>Produse</b><br /><span class="small muted">Catalogul de produse, raioane și unități</span></span>
+	<Icon name="right" size={18} stroke={2} />
+</a>
+
 <section class="card stack" style="margin-top:16px">
 	<h2>Schimbă parola</h2>
 	{#if form?.pwError}<p class="form-error">{form.pwError}</p>{/if}
@@ -63,6 +69,16 @@
 </form>
 
 <style>
+	.link-card {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		color: var(--ink);
+		text-decoration: none;
+	}
+	.link-card b {
+		font-weight: 600;
+	}
 	.users {
 		list-style: none;
 		margin: 0;

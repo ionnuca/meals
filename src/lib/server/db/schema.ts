@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import {
 	boolean,
 	date,
@@ -32,6 +33,19 @@ export const sessions = pgTable(
 	(t) => [index('sessions_user_idx').on(t.userId)]
 );
 
+/** Catalogul de produse: numele, raionul și unitatea propusă implicit. */
+export const products = pgTable(
+	'products',
+	{
+		id: serial('id').primaryKey(),
+		name: text('name').notNull(),
+		aisle: text('aisle').notNull().default('Altele'),
+		unit: text('unit').notNull().default('buc'),
+		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+	},
+	(t) => [uniqueIndex('products_name_lower_idx').on(sql`lower(${t.name})`)]
+);
+
 export const recipes = pgTable('recipes', {
 	id: serial('id').primaryKey(),
 	name: text('name').notNull(),
@@ -53,12 +67,14 @@ export const recipeIngredients = pgTable(
 			.notNull()
 			.references(() => recipes.id, { onDelete: 'cascade' }),
 		position: integer('position').notNull().default(0),
+		/** Produsul din catalog; numele și raionul de mai jos sunt copiate din el și ținute la zi. */
+		productId: integer('product_id').references(() => products.id, { onDelete: 'restrict' }),
 		name: text('name').notNull(),
 		quantity: doublePrecision('quantity'),
 		unit: text('unit'),
 		aisle: text('aisle')
 	},
-	(t) => [index('recipe_ingredients_recipe_idx').on(t.recipeId)]
+	(t) => [index('recipe_ingredients_recipe_idx').on(t.recipeId), index('recipe_ingredients_product_idx').on(t.productId)]
 );
 
 export const meals = pgTable(

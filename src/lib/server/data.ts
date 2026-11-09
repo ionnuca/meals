@@ -5,6 +5,7 @@ import { MEAL_ORDER, mealTypeLabel } from '../constants';
 import { formatDayShort } from '../dates';
 import { scaleFactor } from '../units';
 import type { Need } from '../shopping';
+import { resolveIngredients } from './products';
 
 const { recipes, recipeIngredients, meals, mealDishes, events, eventItems, shoppingExtras } = schema;
 
@@ -50,7 +51,7 @@ export async function getRecipe(id: number, db: Db = getDb()) {
 	return { ...recipe, ingredients };
 }
 
-export type IngredientInput = { name: string; quantity: number | null; unit: string | null; aisle: string | null };
+export type IngredientInput = { productId?: number | null; name: string; quantity: number | null; unit: string | null; aisle: string | null };
 export type RecipeInput = {
 	name: string;
 	category: string;
@@ -73,8 +74,9 @@ export async function createRecipe(input: RecipeInput, photo: string | null, db:
 				photo
 			})
 			.returning({ id: recipes.id });
-		if (input.ingredients.length) {
-			await tx.insert(recipeIngredients).values(input.ingredients.map((i, position) => ({ ...i, recipeId: row.id, position })));
+		const ingredients = await resolveIngredients(input.ingredients, tx);
+		if (ingredients.length) {
+			await tx.insert(recipeIngredients).values(ingredients.map((i, position) => ({ ...i, recipeId: row.id, position })));
 		}
 		return row.id;
 	});
@@ -95,8 +97,9 @@ export async function updateRecipe(id: number, input: RecipeInput, photo: string
 			})
 			.where(eq(recipes.id, id));
 		await tx.delete(recipeIngredients).where(eq(recipeIngredients.recipeId, id));
-		if (input.ingredients.length) {
-			await tx.insert(recipeIngredients).values(input.ingredients.map((i, position) => ({ ...i, recipeId: id, position })));
+		const ingredients = await resolveIngredients(input.ingredients, tx);
+		if (ingredients.length) {
+			await tx.insert(recipeIngredients).values(ingredients.map((i, position) => ({ ...i, recipeId: id, position })));
 		}
 	});
 }
@@ -104,16 +107,6 @@ export async function updateRecipe(id: number, input: RecipeInput, photo: string
 export async function deleteRecipe(id: number, db: Db = getDb()): Promise<string | null> {
 	const [row] = await db.delete(recipes).where(eq(recipes.id, id)).returning({ photo: recipes.photo });
 	return row?.photo ?? null;
-}
-
-/** Produsele folosite deja, cu ultimul raion ales, pentru completare automată. */
-export async function ingredientCatalog(db: Db = getDb()): Promise<{ name: string; aisle: string | null }[]> {
-	const rows = await db.execute<{ name: string; aisle: string | null }>(sql`
-		select distinct on (lower(name)) name, aisle
-		from ${recipeIngredients}
-		order by lower(name), id desc
-	`);
-	return [...rows];
 }
 
 /** Câte mese și evenimente folosesc rețeta (afișat înainte de ștergere). */
@@ -223,7 +216,7 @@ export async function eventsBetween(from: string, to: string, db: Db = getDb()) 
 			time: events.time,
 			name: events.name,
 			guests: events.guests,
-			itemCount: sql<number>`(select count(*)::int from ${eventItems} where ${eventItems.eventId} = ${events.id})`
+			itemCount: sql<number>`(select count(*)::int from "event_items" ei where ei."event_id" = "events"."id")`
 		})
 		.from(events)
 		.where(and(gte(events.date, from), lte(events.date, to)))
@@ -238,7 +231,7 @@ export async function upcomingEvents(fromDate: string, limit = 5, db: Db = getDb
 			time: events.time,
 			name: events.name,
 			guests: events.guests,
-			itemCount: sql<number>`(select count(*)::int from ${eventItems} where ${eventItems.eventId} = ${events.id})`
+			itemCount: sql<number>`(select count(*)::int from "event_items" ei where ei."event_id" = "events"."id")`
 		})
 		.from(events)
 		.where(gte(events.date, fromDate))

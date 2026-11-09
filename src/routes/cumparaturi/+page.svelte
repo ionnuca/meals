@@ -4,7 +4,9 @@
 	import { SvelteSet } from 'svelte/reactivity';
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import Icon from '#lib/components/Icon.svelte';
-	import { AISLES, UNITS } from '#lib/constants.ts';
+	import ProductPicker from '#lib/components/ProductPicker.svelte';
+	import UnitSelect from '#lib/components/UnitSelect.svelte';
+	import { AISLES } from '#lib/constants.ts';
 	import { addDays, daysBetween, formatRange } from '#lib/dates.ts';
 	import { toPlainText } from '#lib/shopping.ts';
 	import { formatQuantity } from '#lib/units.ts';
@@ -23,6 +25,11 @@
 	let hideDone = $state(false);
 	let showRange = $state(false);
 	let showExtra = $state(false);
+	let xId = $state<number | null>(null);
+	let xName = $state('');
+	let xQty = $state('');
+	let xUnit = $state('buc');
+	let xAisle = $state('Altele');
 	let copied = $state('');
 
 	const span = $derived(daysBetween(data.from, data.to) + 1);
@@ -144,16 +151,46 @@
 
 <section class="extras">
 	{#if showExtra}
-		<form method="POST" action="?/addExtra" class="card stack" use:enhance={() => async ({ update }) => update()}>
+		<form
+			method="POST"
+			action="?/addExtra"
+			class="card stack"
+			use:enhance={() =>
+				async ({ result, update }) => {
+					await update();
+					if (result.type === 'success') {
+						xId = null;
+						xName = '';
+						xQty = '';
+					}
+				}}
+		>
 			<h2>Adaugă manual</h2>
 			<input type="hidden" name="period" value={data.period} />
-			<datalist id="units">{#each UNITS as u (u)}<option value={u}></option>{/each}</datalist>
-			<label class="field">Produs<input type="text" name="name" required maxlength="120" placeholder="de ex. Pâine" /></label>
+			<div class="field">
+				<span>Produs</span>
+				<ProductPicker
+					products={data.catalog}
+					bind:productId={xId}
+					bind:text={xName}
+					label="Produs"
+					idName="product_id"
+					textName="name"
+					placeholder="de ex. Pâine albă"
+					required
+					onpick={(p) => {
+						if (p) {
+							xUnit = p.unit;
+							xAisle = p.aisle;
+						}
+					}}
+				/>
+			</div>
 			<div class="grid3">
-				<label class="field">Cantitate<input type="text" name="quantity" inputmode="decimal" /></label>
-				<label class="field">Unitate<input type="text" name="unit" list="units" /></label>
+				<label class="field">Cantitate<input type="text" name="quantity" inputmode="decimal" bind:value={xQty} /></label>
+				<label class="field">Unitate<UnitSelect name="unit" label="Unitate" bind:value={xUnit} /></label>
 				<label class="field">Raion
-					<select name="aisle">
+					<select name="aisle" bind:value={xAisle}>
 						{#each AISLES as a (a)}<option value={a}>{a}</option>{/each}
 					</select>
 				</label>
@@ -288,7 +325,7 @@
 	}
 	.grid3 {
 		display: grid;
-		grid-template-columns: 80px 90px minmax(0, 1fr);
+		grid-template-columns: 76px 112px minmax(0, 1fr);
 		gap: 10px;
 	}
 </style>

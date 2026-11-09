@@ -216,7 +216,7 @@ img {
 }
 
 /* ---------- Formulare ---------- */
-label.field {
+.field {
 	display: flex;
 	flex-direction: column;
 	gap: 6px;

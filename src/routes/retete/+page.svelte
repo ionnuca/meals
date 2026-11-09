@@ -20,6 +20,7 @@
 
 <PageHeader title="Rețete" eyebrow={`${data.recipes.length} în colecție`}>
 	{#snippet actions()}
+		<a class="btn small secondary" href="/produse"><Icon name="cart" size={16} />Produse</a>
 		<a class="btn small" href="/retete/nou"><Icon name="plus" size={16} stroke={2.2} />Rețetă</a>
 	{/snippet}
 </PageHeader>

@@ -1,8 +1,9 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { getDb, schema } from '#lib/server/db/index.ts';
-import { getEvent, ingredientCatalog, listRecipes } from '#lib/server/data.ts';
-import { aisleField, dateField, id as parseId, int, isPast, isSection, PAST_MESSAGE, str, timeField, todayLocal, unitField } from '#lib/server/forms.ts';
+import { getEvent, listRecipes } from '#lib/server/data.ts';
+import { ensureProduct, getProduct, listProducts, validUnit } from '#lib/server/products.ts';
+import { aisleField, dateField, id as parseId, int, isPast, isSection, PAST_MESSAGE, str, timeField, todayLocal } from '#lib/server/forms.ts';
 import { parseQuantity } from '#lib/units.ts';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -40,7 +41,7 @@ export const load: PageServerLoad = async ({ params }) => {
 					.map((i) => ({ name: i.name, quantity: i.quantity, unit: i.unit, aisle: i.aisle, recipeServings: it.recipeServings ?? 1, scale: true, source: it.name }))
 			: [{ name: it.name, quantity: it.quantity, unit: it.unit, aisle: it.aisle, recipeServings: 1, scale: false, source: it.name }]
 	);
-	const [recipes, catalog] = await Promise.all([listRecipes(), ingredientCatalog()]);
+	const [recipes, catalog] = await Promise.all([listRecipes(), listProducts()]);
 	return { event, raw, recipes, catalog, past: isPast(event.date), today: todayLocal() };
 };
 
@@ -88,18 +89,25 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const section = str(form, 'section', 20);
 		const name = str(form, 'name', 120);
-		if (!isSection(section) || !name) return fail(400, { message: 'Scrie numele produsului.' });
+		if (!isSection(section) || !name) return fail(400, { message: 'Alege produsul.' });
 		const quantity = parseQuantity(form.get('quantity'));
 		if (String(form.get('quantity') ?? '').trim() && quantity === null) return fail(400, { message: 'Cantitatea nu e un număr valid.' });
+		// produsul vine din catalog; dacă e nou, se adaugă în catalog
+		const productId = parseId(form.get('product_id'));
+		const aisle = aisleField(form.get('aisle')) ?? (section === 'bauturi' ? 'Băuturi' : null);
+		let product = productId ? await getProduct(productId) : null;
+		if (!product || product.name.toLowerCase() !== name.toLowerCase()) {
+			product = await ensureProduct({ name, aisle, unit: form.get('unit') as string });
+		}
 		await getDb()
 			.insert(schema.eventItems)
 			.values({
 				eventId: ev.id,
 				section,
-				name,
+				name: product.name,
 				quantity,
-				unit: unitField(form.get('unit')),
-				aisle: aisleField(form.get('aisle')) ?? (section === 'bauturi' ? 'Băuturi' : null),
+				unit: validUnit(form.get('unit'), product.unit),
+				aisle: aisle ?? product.aisle,
 				position: await nextPosition(ev.id)
 			});
 		return { added: true };

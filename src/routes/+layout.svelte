@@ -11,7 +11,7 @@
 	const tabs = [
 		{ href: '/plan', label: 'Plan', icon: 'plan', match: ['/plan', '/zi', '/masa'] },
 		{ href: '/calendar', label: 'Calendar', icon: 'calendar', match: ['/calendar', '/evenimente'] },
-		{ href: '/retete', label: 'Rețete', icon: 'book', match: ['/retete'] },
+		{ href: '/retete', label: 'Rețete', icon: 'book', match: ['/retete', '/produse'] },
 		{ href: '/cumparaturi', label: 'Cumpărături', icon: 'cart', match: ['/cumparaturi'] }
 	] as const;
 

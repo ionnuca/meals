@@ -21,11 +21,20 @@ async function login(page: Page) {
 	await expect(page).toHaveURL(/\/plan/);
 }
 
-async function addIngredient(page: Page, index: number, name: string, qty: string, unit: string, aisle: string) {
-	await page.getByLabel(`Produsul ${index}`).fill(name);
+/** Alege un produs din lista derulantă cu căutare (primul rezultat al căutării). */
+async function pickProduct(page: Page, label: string, search: string, expected = search) {
+	const box = page.getByRole('combobox', { name: label, exact: true });
+	await box.click();
+	await box.fill(search);
+	await box.press('Enter');
+	await expect(box).toHaveValue(expected);
+}
+
+async function addIngredient(page: Page, index: number, name: string, qty: string, unit: string, newAisle?: string) {
+	await pickProduct(page, `Produsul ${index}`, name);
 	await page.getByLabel(`Cantitatea ${index}`).fill(qty);
-	await page.getByLabel(`Unitatea ${index}`).fill(unit);
-	await page.getByLabel(`Raionul ${index}`).selectOption(aisle);
+	await page.getByLabel(`Unitatea ${index}`).selectOption(unit);
+	if (newAisle) await page.getByLabel(`Raionul ${index}`).selectOption(newAisle);
 }
 
 test('prima pornire creează contul și protejează paginile', async ({ page }) => {
@@ -59,9 +68,20 @@ test('rețete cu poză și ingrediente', async ({ page }) => {
 	await page.getByLabel(/pentru câte porții/).fill('4');
 	await page.locator('input[name="photo"]').setInputFiles('tests/e2e/fixtures/ciorba.jpg');
 	await expect(page.getByAltText('Previzualizare')).toBeVisible();
-	await addIngredient(page, 1, 'Carne tocată', '300', 'g', 'Carne și pește');
-	await addIngredient(page, 2, 'Ceapă', '1', 'buc', 'Legume și fructe');
-	await addIngredient(page, 3, 'Sare', '', 'după gust', 'Condimente');
+	await addIngredient(page, 1, 'Carne tocată', '300', 'g');
+	await addIngredient(page, 2, 'Ceapă', '1', 'buc');
+	await addIngredient(page, 3, 'Sare', '', 'după gust');
+	// unitatea se preia din catalog la alegerea produsului
+	await expect(page.getByLabel('Unitatea 3')).toHaveValue('după gust');
+	// un produs care lipsește din catalog se adaugă direct din rețetă, cu raionul ales
+	await page.getByRole('button', { name: 'Adaugă ingredient' }).click();
+	const box = page.getByRole('combobox', { name: 'Produsul 4', exact: true });
+	await box.fill('Borș de casă');
+	await expect(page.getByRole('option', { name: /Produs nou: „Borș de casă”/ })).toBeVisible();
+	await box.press('Enter');
+	await page.getByLabel('Cantitatea 4').fill('500');
+	await page.getByLabel('Unitatea 4').selectOption('ml');
+	await page.getByLabel('Raionul 4').selectOption('Conserve și murături');
 	await page.getByLabel('Mod de preparare').fill('Fierbe legumele.\nAdaugă perișoarele.\nAcrește cu borș.');
 	await page.getByRole('button', { name: 'Salvează rețeta' }).click();
 
@@ -79,9 +99,9 @@ test('rețete cu poză și ingrediente', async ({ page }) => {
 	await page.goto('/retete/nou');
 	await page.getByLabel('Nume', { exact: true }).fill('Sarmale cu smântână');
 	await page.getByLabel('Categorie').selectOption('fel_principal');
-	await addIngredient(page, 1, 'Carne tocată', '0,5', 'kg', 'Carne și pește');
-	await addIngredient(page, 2, 'Smântână', '300', 'g', 'Lactate și ouă');
-	await addIngredient(page, 3, 'Ceapă', '2', 'buc', 'Legume și fructe');
+	await addIngredient(page, 1, 'Carne tocată', '0,5', 'kg');
+	await addIngredient(page, 2, 'Smântână', '300', 'g');
+	await addIngredient(page, 3, 'Ceapă', '2', 'buc');
 	await page.getByRole('button', { name: 'Salvează rețeta' }).click();
 	await expect(page.getByRole('heading', { name: 'Sarmale cu smântână' })).toBeVisible();
 
@@ -143,11 +163,11 @@ test('eveniment cu feluri și băuturi', async ({ page }) => {
 
 	await page.getByRole('combobox', { name: 'Secțiunea' }).selectOption('bauturi');
 	await page.getByRole('tab', { name: 'Produs sau băutură' }).click();
-	await page.getByLabel('Produs').fill('Vin roșu sec');
+	await pickProduct(page, 'Produs', 'Vin roșu');
 	await page.getByLabel('Cantitate').fill('3');
-	await page.getByLabel('Unitate').fill('sticlă');
+	await expect(page.getByLabel('Unitate', { exact: true })).toHaveValue('sticlă');
 	await page.getByRole('button', { name: 'Adaugă', exact: true }).click();
-	await expect(page.locator('.product', { hasText: 'Vin roșu sec' })).toContainText('3 sticlă');
+	await expect(page.locator('.product', { hasText: 'Vin roșu' })).toContainText('3 sticlă');
 
 	// 8 persoane, rețetă pentru 4: carne 0,5 kg × 2 = 1 kg
 	await expect(page.locator('.ing', { hasText: 'Carne tocată' })).toContainText('1 kg');
@@ -164,7 +184,7 @@ test('lista de cumpărături adună mesele și evenimentele', async ({ page }) =
 	const carne = page.locator('.item', { hasText: 'Carne tocată' });
 	// masa (1,6 kg) + evenimentul (1 kg)
 	await expect(carne).toContainText('2,6 kg');
-	await expect(page.locator('.item', { hasText: 'Vin roșu sec' })).toContainText('3 sticlă');
+	await expect(page.locator('.item', { hasText: 'Vin roșu' })).toContainText('3 sticlă');
 	await expect(page.locator('.item', { hasText: 'Sare' })).toContainText('după gust');
 
 	const ceapa = page.locator('.item', { hasText: 'Ceapă' });
@@ -177,12 +197,12 @@ test('lista de cumpărături adună mesele și evenimentele', async ({ page }) =
 	await expect(page.locator('.item', { hasText: 'Ceapă' })).toHaveAttribute('aria-pressed', 'true');
 
 	await page.getByRole('button', { name: 'Adaugă un produs' }).click();
-	await page.getByLabel('Produs').fill('Pâine');
+	await pickProduct(page, 'Produs', 'Pâine', 'Pâine albă');
 	await page.getByLabel('Cantitate').fill('2');
-	await page.getByLabel('Unitate').fill('buc');
-	await page.getByLabel('Raion').selectOption('Panificație');
+	await expect(page.getByLabel('Unitate', { exact: true })).toHaveValue('buc');
+	await expect(page.getByLabel('Raion')).toHaveValue('Panificație');
 	await page.getByRole('button', { name: 'Adaugă', exact: true }).click();
-	await expect(page.locator('.item', { hasText: 'Pâine' })).toContainText('2 buc');
+	await expect(page.locator('.item', { hasText: 'Pâine albă' })).toContainText('2 buc');
 	await page.getByRole('button', { name: 'Gata' }).click();
 	await page.screenshot({ path: shots('08-cumparaturi'), fullPage: true });
 
@@ -190,6 +210,47 @@ test('lista de cumpărături adună mesele și evenimentele', async ({ page }) =
 	await expect(page.locator('.day.today')).toContainText('Ciorbă de perișoare · Sarmale cu smântână');
 	await expect(page.locator('.day.today')).toContainText('Cina cu prietenii');
 	await page.screenshot({ path: shots('01-plan'), fullPage: true });
+});
+
+test('catalogul de produse: adăugare, redenumire, ștergere', async ({ page }) => {
+	await login(page);
+	await page.goto('/retete');
+	await page.getByRole('link', { name: 'Produse' }).click();
+	await expect(page).toHaveURL(/\/produse/);
+	await expect(page.getByText(/în catalog/)).toBeVisible();
+
+	// produs nou
+	await page.getByRole('button', { name: 'Produs', exact: true }).click();
+	await page.getByLabel('Nume').fill('quinoa');
+	await page.getByLabel('Raion').selectOption('Băcănie');
+	await page.getByLabel('Unitate implicită').selectOption('g');
+	await page.getByRole('button', { name: 'Adaugă în catalog' }).click();
+	await expect(page.getByRole('status')).toContainText('„Quinoa” a fost adăugat');
+	await page.getByRole('button', { name: 'Gata' }).click();
+
+	// căutare și ștergere (produs nefolosit)
+	await page.getByLabel('Caută un produs').fill('quin');
+	await page.getByRole('button', { name: 'Editează Quinoa' }).click();
+	page.once('dialog', (d) => d.accept());
+	await page.getByRole('button', { name: 'Șterge produsul' }).click();
+	await expect(page.getByText('Niciun produs găsit.')).toBeVisible();
+
+	// produsul creat din rețetă: nume duplicat refuzat, apoi redenumire vizibilă în rețetă
+	await page.getByLabel('Caută un produs').fill('borș de');
+	await page.getByRole('button', { name: 'Editează Borș de casă' }).click();
+	await expect(page.getByRole('button', { name: /nu poate fi șters/ })).toBeDisabled();
+	await page.getByLabel('Nume').fill('Borș');
+	await page.getByRole('button', { name: 'Salvează' }).click();
+	await expect(page.getByRole('alert')).toContainText('există deja');
+	await page.getByLabel('Nume').fill('Borș acru de casă');
+	await page.getByRole('button', { name: 'Salvează' }).click();
+	await page.getByLabel('Caută un produs').fill('borș acru');
+	await expect(page.getByRole('button', { name: 'Editează Borș acru de casă' })).toBeVisible();
+	await page.screenshot({ path: shots('10-produse'), fullPage: true });
+
+	await page.goto('/retete');
+	await page.getByRole('link', { name: /Ciorbă de perișoare/ }).click();
+	await expect(page.getByText('Borș acru de casă')).toBeVisible();
 });
 
 function yesterdayIso(): string {

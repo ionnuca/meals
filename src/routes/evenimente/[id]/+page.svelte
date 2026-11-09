@@ -4,7 +4,9 @@
 	import Photo from '#lib/components/Photo.svelte';
 	import Icon from '#lib/components/Icon.svelte';
 	import Stepper from '#lib/components/Stepper.svelte';
-	import { AISLES, EVENT_SECTIONS, UNITS, categoryLabel } from '#lib/constants.ts';
+	import ProductPicker from '#lib/components/ProductPicker.svelte';
+	import UnitSelect from '#lib/components/UnitSelect.svelte';
+	import { AISLES, EVENT_SECTIONS, categoryLabel } from '#lib/constants.ts';
 	import { formatDayLong } from '#lib/dates.ts';
 	import { aggregate } from '#lib/shopping.ts';
 	import { formatQuantity, scaleFactor } from '#lib/units.ts';
@@ -43,6 +45,11 @@
 	let mode = $state<'reteta' | 'produs'>('reteta');
 	let section = $state('principale');
 	let filter = $state('');
+	let pId = $state<number | null>(null);
+	let pName = $state('');
+	let pQty = $state('');
+	let pUnit = $state('sticlă');
+	let pAisle = $state('');
 	let editing = $state(false);
 	const matches = $derived(
 		data.recipes.filter((r) => !filter || r.name.toLowerCase().includes(filter.trim().toLowerCase())).slice(0, 30)
@@ -186,16 +193,45 @@
 					{/each}
 				</ul>
 			{:else}
-				<form method="POST" action="?/addProduct" class="stack" use:enhance>
+				<form
+					method="POST"
+					action="?/addProduct"
+					class="stack"
+					use:enhance={() =>
+						async ({ result, update }) => {
+							await update();
+							if (result.type === 'success') {
+								pId = null;
+								pName = '';
+								pQty = '';
+							}
+						}}
+				>
 					<input type="hidden" name="section" value={section} />
-					<datalist id="ev-names">{#each data.catalog as c (c.name)}<option value={c.name}></option>{/each}</datalist>
-					<datalist id="ev-units">{#each UNITS as u (u)}<option value={u}></option>{/each}</datalist>
-					<label class="field">Produs<input type="text" name="name" list="ev-names" required maxlength="120" placeholder="de ex. Vin roșu sec" /></label>
+					<div class="field">
+						<span>Produs</span>
+						<ProductPicker
+							products={data.catalog}
+							bind:productId={pId}
+							bind:text={pName}
+							label="Produs"
+							idName="product_id"
+							textName="name"
+							placeholder="de ex. Vin roșu"
+							required
+							onpick={(p) => {
+								if (p) {
+									pUnit = p.unit;
+									pAisle = p.aisle;
+								}
+							}}
+						/>
+					</div>
 					<div class="grid3">
-						<label class="field">Cantitate<input type="text" name="quantity" inputmode="decimal" placeholder="3" /></label>
-						<label class="field">Unitate<input type="text" name="unit" list="ev-units" placeholder="sticlă" /></label>
+						<label class="field">Cantitate<input type="text" name="quantity" inputmode="decimal" placeholder="3" bind:value={pQty} /></label>
+						<label class="field">Unitate<UnitSelect name="unit" label="Unitate" bind:value={pUnit} /></label>
 						<label class="field">Raion
-							<select name="aisle">
+							<select name="aisle" bind:value={pAisle}>
 								<option value="">auto</option>
 								{#each AISLES as a (a)}<option value={a}>{a}</option>{/each}
 							</select>
@@ -423,7 +459,7 @@
 	}
 	.grid3 {
 		display: grid;
-		grid-template-columns: 80px 100px minmax(0, 1fr);
+		grid-template-columns: 76px 112px minmax(0, 1fr);
 		gap: 10px;
 	}
 </style>

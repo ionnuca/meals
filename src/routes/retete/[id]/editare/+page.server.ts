@@ -1,5 +1,6 @@
 import { error, fail, redirect } from '@sveltejs/kit';
-import { getRecipe, ingredientCatalog, updateRecipe } from '#lib/server/data.ts';
+import { getRecipe, updateRecipe } from '#lib/server/data.ts';
+import { listProducts } from '#lib/server/products.ts';
 import { id as parseId, parseRecipeForm } from '#lib/server/forms.ts';
 import { deletePhoto, savePhoto } from '#lib/server/uploads.ts';
 import type { Actions, PageServerLoad } from './$types';
@@ -8,7 +9,7 @@ export const load: PageServerLoad = async ({ params }) => {
 	const recipeId = parseId(params.id);
 	const recipe = recipeId ? await getRecipe(recipeId) : null;
 	if (!recipe) error(404, 'Rețeta nu există');
-	return { recipe, catalog: await ingredientCatalog() };
+	return { recipe, catalog: await listProducts() };
 };
 
 export const actions: Actions = {

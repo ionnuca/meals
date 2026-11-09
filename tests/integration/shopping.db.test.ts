@@ -3,7 +3,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { sql } from 'drizzle-orm';
 import { createDb, runMigrations, schema, type Db } from '../../src/lib/server/db';
-import { createRecipe, getEvent, getMeal, mealsBetween, shoppingNeeds, updateRecipe } from '../../src/lib/server/data';
+import { createRecipe, eventsBetween, getEvent, getMeal, mealsBetween, shoppingNeeds, updateRecipe } from '../../src/lib/server/data';
 import { aggregate } from '../../src/lib/shopping';
 
 const url = process.env.TEST_DATABASE_URL;
@@ -77,6 +77,9 @@ describe.skipIf(!url)('lista de cumpărături din baza de date', () => {
 		expect(meal?.dishes.map((d) => d.name)).toEqual(['Ciorbă de perișoare', 'Sarmale']);
 		expect((await mealsBetween('2026-11-02', '2026-11-08', db)).length).toBe(1);
 		expect((await getEvent(ev.id, db))?.items.map((i) => i.name)).toEqual(['Sarmale', 'Vin roșu']);
+		// numărul de elemente al evenimentului (subinterogare corelată)
+		const [evRow] = await eventsBetween('2026-11-04', '2026-11-04', db);
+		expect(evRow.itemCount).toBe(2);
 
 		const groups = aggregate(await shoppingNeeds('2026-11-02', '2026-11-08', db));
 		const find = (name: string) => groups.flatMap((g) => g.items).find((i) => i.name === name);
