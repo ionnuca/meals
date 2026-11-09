@@ -3,16 +3,27 @@ import { asc, eq } from 'drizzle-orm';
 import { getDb, schema } from '#lib/server/db/index.ts';
 import { hashPassword, invalidateUserSessions, isEmail, normalizeEmail, validatePassword, verifyPassword } from '#lib/server/auth.ts';
 import { id as parseId, str } from '#lib/server/forms.ts';
+import { getMealDefaults, saveMealDefaults } from '#lib/server/settings.ts';
+import { MEAL_TYPES } from '#lib/constants.ts';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => ({
 	users: await getDb()
 		.select({ id: schema.users.id, name: schema.users.name, email: schema.users.email })
 		.from(schema.users)
-		.orderBy(asc(schema.users.id))
+		.orderBy(asc(schema.users.id)),
+	mealDefaults: await getMealDefaults()
 });
 
 export const actions: Actions = {
+	mealDefaults: async ({ request }) => {
+		const form = await request.formData();
+		const values: Record<string, number> = {};
+		for (const t of MEAL_TYPES) values[t.id] = Number(form.get(`servings_${t.id}`));
+		await saveMealDefaults(values);
+		return { defaultsOk: 'Porțiile implicite au fost salvate.' };
+	},
+
 	addUser: async ({ request }) => {
 		const form = await request.formData();
 		const name = str(form, 'name', 80);

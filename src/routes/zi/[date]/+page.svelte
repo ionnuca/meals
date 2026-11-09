@@ -15,8 +15,10 @@
 	let servings = $state(2);
 	let time = $state('');
 	// ora se propune după tipul mesei, dar poate fi schimbată
+	// ora și porțiile se propun după tipul mesei (porțiile din Setări), dar pot fi schimbate
 	$effect(() => {
 		time = MEAL_TYPES.find((m) => m.id === mealType)?.time ?? '';
+		servings = data.mealDefaults[mealType] ?? 2;
 	});
 	const used = $derived(new Set(data.meals.map((m) => m.mealType)));
 

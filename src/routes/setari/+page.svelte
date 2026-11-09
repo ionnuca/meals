@@ -2,9 +2,17 @@
 	import { enhance } from '$app/forms';
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import Icon from '#lib/components/Icon.svelte';
+	import Stepper from '#lib/components/Stepper.svelte';
+	import { MEAL_TYPES } from '#lib/constants.ts';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
+
+	// svelte-ignore state_referenced_locally
+	let defaults = $state<Record<string, number>>({ ...data.mealDefaults });
+	$effect(() => {
+		defaults = { ...data.mealDefaults };
+	});
 </script>
 
 <svelte:head><title>Setări · Mese</title></svelte:head>
@@ -47,6 +55,21 @@
 	</form>
 </section>
 
+<section class="card stack" style="margin-top:16px">
+	<h2>Porții implicite</h2>
+	<p class="small muted">Câte porții primește automat o masă nouă, după tipul ei. Le poți schimba oricând la fiecare masă.</p>
+	{#if form?.defaultsOk}<p class="form-ok" role="status">{form.defaultsOk}</p>{/if}
+	<form method="POST" action="?/mealDefaults" class="stack" use:enhance={() => async ({ update }) => update({ reset: false })}>
+		{#each MEAL_TYPES as t (t.id)}
+			<div class="default-row">
+				<span class="grow">{t.label}</span>
+				<Stepper bind:value={defaults[t.id]} name={`servings_${t.id}`} min={1} max={100} label={`porții la ${t.label.toLowerCase()}`} />
+			</div>
+		{/each}
+		<button class="btn">Salvează porțiile</button>
+	</form>
+</section>
+
 <a class="card link-card" href="/produse" style="margin-top:16px">
 	<Icon name="cart" size={20} />
 	<span class="grow"><b>Produse</b><br /><span class="small muted">Catalogul de produse, raioane și unități</span></span>
@@ -69,6 +92,13 @@
 </form>
 
 <style>
+	.default-row {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		border-bottom: 1px solid #f0ece3;
+		padding-bottom: 8px;
+	}
 	.link-card {
 		display: flex;
 		align-items: center;

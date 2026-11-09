@@ -16,6 +16,7 @@
 	const f = $derived(scaleFactor(servings, r.servings));
 	const steps = $derived(r.instructions.split(/\n+/).map((s) => s.trim()).filter(Boolean));
 	let showPlan = $state(false);
+	let planType = $state('pranz');
 </script>
 
 <svelte:head><title>{r.name} · Mese</title></svelte:head>
@@ -76,12 +77,12 @@
 			<div class="grid2">
 				<label class="field">Ziua<input type="date" name="date" min={data.today} defaultValue={data.today} required /></label>
 				<label class="field">Masa
-					<select name="meal_type">
-						{#each MEAL_TYPES as m (m.id)}<option value={m.id} selected={m.id === 'pranz'}>{m.label}</option>{/each}
+					<select name="meal_type" bind:value={planType}>
+						{#each MEAL_TYPES as m (m.id)}<option value={m.id}>{m.label}</option>{/each}
 					</select>
 				</label>
 			</div>
-			<label class="field">Porții (dacă masa e nouă)<input type="number" name="servings" min="1" max="100" defaultValue={servings} /></label>
+			<label class="field">Porții (dacă masa e nouă)<input type="number" name="servings" min="1" max="100" value={data.mealDefaults[planType] ?? 2} /></label>
 			<div class="row">
 				<button class="btn grow">Adaugă</button>
 				<button type="button" class="btn secondary" onclick={() => (showPlan = false)}>Renunță</button>

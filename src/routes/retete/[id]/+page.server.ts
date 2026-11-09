@@ -5,13 +5,14 @@ import { deleteRecipe, getRecipe, nextDishPosition, recipeUsage } from '#lib/ser
 import { dateField, id as parseId, int, isMealType, isPast, PAST_MESSAGE, str, todayLocal } from '#lib/server/forms.ts';
 import { deletePhoto } from '#lib/server/uploads.ts';
 import { MEAL_TYPES } from '#lib/constants.ts';
+import { getMealDefaults } from '#lib/server/settings.ts';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params }) => {
 	const recipeId = parseId(params.id);
 	const recipe = recipeId ? await getRecipe(recipeId) : null;
 	if (!recipe) error(404, 'Rețeta nu există');
-	return { recipe, usage: await recipeUsage(recipe.id), today: todayLocal() };
+	return { recipe, usage: await recipeUsage(recipe.id), today: todayLocal(), mealDefaults: await getMealDefaults() };
 };
 
 export const actions: Actions = {

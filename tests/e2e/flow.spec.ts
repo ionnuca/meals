@@ -303,6 +303,28 @@ test('zilele trecute nu se pot planifica, iar azi e evidențiat în calendar', a
 	await expect(page.getByRole('button', { name: 'Adaugă o masă' })).toBeVisible();
 });
 
+test('porțiile implicite din Setări se aplică meselor noi', async ({ page }) => {
+	await login(page);
+	await page.goto('/setari');
+	const cina = page.locator('.default-row', { hasText: 'Cină' });
+	await expect(cina.locator('output')).toHaveText('2');
+	for (let i = 0; i < 3; i++) await cina.getByRole('button', { name: 'Mai multe porții la cină' }).click();
+	await page.getByRole('button', { name: 'Salvează porțiile' }).click();
+	await expect(page.getByText('Porțiile implicite au fost salvate.')).toBeVisible();
+	await page.reload();
+	await expect(page.locator('.default-row', { hasText: 'Cină' }).locator('output')).toHaveText('5');
+
+	await page.goto(`/zi/${todayIso()}`);
+	await page.getByRole('button', { name: 'Adaugă o masă' }).click();
+	await page.locator('label.type', { hasText: 'Cină' }).click();
+	await expect(page.locator('form output')).toHaveText('5');
+	await page.locator('label.type', { hasText: 'Gustare' }).click();
+	await expect(page.locator('form output')).toHaveText('2');
+	await page.locator('label.type', { hasText: 'Cină' }).click();
+	await page.getByRole('button', { name: 'Creează și adaugă feluri' }).click();
+	await expect(page.locator('.big')).toContainText('5 porții');
+});
+
 test('tragerea în jos reîmprospătează datele paginii', async ({ page }) => {
 	await login(page);
 	await page.goto('/cumparaturi');

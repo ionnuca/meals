@@ -165,3 +165,9 @@ export const shoppingExtras = pgTable(
 	},
 	(t) => [index('shopping_extras_period_idx').on(t.period)]
 );
+
+/** Numărul implicit de porții pentru fiecare tip de masă (setare comună pentru toată familia). */
+export const mealDefaults = pgTable('meal_defaults', {
+	mealType: text('meal_type').primaryKey(),
+	servings: integer('servings').notNull()
+});

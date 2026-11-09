@@ -4,6 +4,7 @@ import { eventsBetween, mealsBetween } from '#lib/server/data.ts';
 import { int, isMealType, isPast, PAST_MESSAGE, str, timeField, todayLocal } from '#lib/server/forms.ts';
 import { isIsoDate, startOfWeek, weekDays } from '#lib/dates.ts';
 import { MEAL_TYPES } from '#lib/constants.ts';
+import { getMealDefaults } from '#lib/server/settings.ts';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params }) => {
@@ -13,6 +14,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		date: params.date,
 		today: todayLocal(),
 		past: isPast(params.date),
+		mealDefaults: await getMealDefaults(),
 		week: weekDays(startOfWeek(params.date)),
 		meals,
 		events

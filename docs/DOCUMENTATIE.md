@@ -62,6 +62,10 @@ Bara de jos are patru secțiuni: **Plan**, **Calendar**, **Planificare doar de a
 - Navigare între săptămâni și link direct la lista de cumpărături a săptămânii.
 - Dacă săptămâna e goală, se poate copia săptămâna precedentă.
 
+**Porții implicite** (Setări)
+- Pentru fiecare tip de masă (mic dejun, prânz, gustare, cină, altă masă) se setează câte porții primește automat o masă nouă. Setarea e comună pentru toată familia; inițial e 2 peste tot.
+- Valoarea se propune la „Adaugă o masă” (se schimbă când alegi alt tip de masă) și la „Adaugă în plan” din rețetă; la fiecare masă poate fi modificată după creare.
+
 **Ziua**
 - Bandă cu zilele săptămânii, mesele zilei (cu feluri, poze și porții) și evenimentele.
 - „Adaugă o masă”: tipul mesei (se propune primul tip care lipsește), ora (propusă după tip), porțiile și o notă.
@@ -196,6 +200,7 @@ shopping_extras   produse adăugate manual pe perioadă
 | `meal_dishes` | `meal_id`, `recipe_id`, poziție |
 | `events` | `date`, `time`, nume, `guests`, notă |
 | `event_items` | `event_id`, `section`, `recipe_id` sau (nume, cantitate, unitate, raion), poziție |
+| `meal_defaults` | porțiile implicite pe tip de masă (`meal_type` cheie primară, `servings`) |
 | `shopping_checks` | `period` („YYYY-MM-DD_YYYY-MM-DD”), `item_key` („nume normalizat|unitate”), `checked` |
 | `shopping_extras` | `period`, nume, cantitate, unitate, raion |
 
