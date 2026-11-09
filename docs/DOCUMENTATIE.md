@@ -75,7 +75,12 @@ Bara de jos are patru secțiuni: **Plan**, **Calendar**, **Planificare doar de a
 **Masa**
 - Selectorul de porții salvează automat noul număr după scurt timp.
 - Lista felurilor: fiecare fel duce la rețeta lui și poate fi scos din masă.
-- „Adaugă un fel” deschide o listă de rețete cu căutare; se pot adăuga mai multe la rând.
+- „Adaugă un fel” deschide lista de rețete, grupată pe categorii. Lista pornește de la categoriile potrivite mesei (filtrul „Pentru …”), iar celelalte sunt la un clic („Toate” sau o categorie anume). Căutarea caută în toate rețetele. Se pot adăuga mai multe feluri la rând.
+  - mic dejun: mic dejun, patiserie, gustări, băuturi
+  - prânz: supe, feluri principale, garnituri, salate, deserturi, băuturi
+  - cină: feluri principale, garnituri, salate, supe, deserturi, băuturi
+  - gustare: gustări, deserturi, patiserie, băuturi
+  - la evenimente, după secțiune (aperitive, feluri principale, garnituri, deserturi, băuturi)
 - „Produse necesare” arată cantitățile totale ale mesei, scalate la porțiile ei.
 - Masa se poate edita (tip, oră, notă) sau șterge.
 

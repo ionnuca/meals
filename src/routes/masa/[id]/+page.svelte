@@ -5,7 +5,8 @@
 	import Photo from '#lib/components/Photo.svelte';
 	import Icon from '#lib/components/Icon.svelte';
 	import Stepper from '#lib/components/Stepper.svelte';
-	import { MEAL_TYPES, categoryLabel } from '#lib/constants.ts';
+	import RecipePicker from '#lib/components/RecipePicker.svelte';
+	import { MEAL_TYPE_CATEGORIES, MEAL_TYPES, categoryLabel } from '#lib/constants.ts';
 	import { formatDayLong } from '#lib/dates.ts';
 	import { aggregate } from '#lib/shopping.ts';
 	import { scaleFactor } from '#lib/units.ts';
@@ -39,14 +40,8 @@
 		timer = setTimeout(() => servingsForm?.requestSubmit(), 600);
 	}
 
-	let filter = $state('');
 	// deschisă direct când masa tocmai a fost creată dintr-un loc gol al zilei
 	let picking = $state(page.url.searchParams.has('adauga'));
-	const matches = $derived(
-		data.recipes
-			.filter((r) => !filter || r.name.toLowerCase().includes(filter.trim().toLowerCase()))
-			.slice(0, 30)
-	);
 	let editing = $state(false);
 </script>
 
@@ -134,24 +129,18 @@
 				<h3>Alege o rețetă</h3>
 				<button class="icon-btn plain" aria-label="Închide" onclick={() => (picking = false)}><Icon name="close" size={18} /></button>
 			</div>
-			<input type="search" placeholder="Caută…" bind:value={filter} aria-label="Caută rețeta" />
-			{#if data.recipes.length === 0}
-				<p class="small muted">Nu ai încă rețete. <a href="/retete/nou">Adaugă una</a>.</p>
-			{/if}
-			<ul class="options">
-				{#each matches as r (r.id)}
-					<li>
-						<form method="POST" action="?/addDish" use:enhance class="opt">
-							<input type="hidden" name="recipe_id" value={r.id} />
-							<button class="opt-btn">
-								<Photo photo={r.photo} category={r.category} size={40} radius={10} alt="" />
-								<span class="grow">{r.name}<br /><span class="small muted">{categoryLabel(r.category)}</span></span>
-								<Icon name="plus" size={18} stroke={2} />
-							</button>
-						</form>
-					</li>
-				{/each}
-			</ul>
+			<RecipePicker recipes={data.recipes} suggested={MEAL_TYPE_CATEGORIES[meal.mealType] ?? []} suggestedLabel={`Pentru ${meal.label.toLowerCase()}`}>
+				{#snippet item(r)}
+					<form method="POST" action="?/addDish" use:enhance class="opt">
+						<input type="hidden" name="recipe_id" value={r.id} />
+						<button class="opt-btn">
+							<Photo photo={r.photo} category={r.category} size={40} radius={10} alt="" />
+							<span class="grow">{r.name}<br /><span class="small muted">{categoryLabel(r.category)}</span></span>
+							<Icon name="plus" size={18} stroke={2} />
+						</button>
+					</form>
+				{/snippet}
+			</RecipePicker>
 		</div>
 	{:else if !data.past}
 		<button class="btn dashed" onclick={() => (picking = true)}><Icon name="plus" size={18} stroke={2} />Adaugă un fel</button>
@@ -240,13 +229,6 @@
 		color: var(--ink);
 		text-decoration: none;
 		gap: 12px;
-	}
-	.options {
-		list-style: none;
-		margin: 0;
-		padding: 0;
-		max-height: 360px;
-		overflow-y: auto;
 	}
 	.opt-btn {
 		width: 100%;

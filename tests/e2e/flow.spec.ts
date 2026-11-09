@@ -347,6 +347,31 @@ test('fiecare zi are implicit mic dejun, prânz și cină', async ({ page }) => 
 	await expect(page).toHaveURL(/\/masa\/\d+/);
 	await expect(page.getByRole('heading', { name: 'Mic dejun' })).toBeVisible();
 	await expect(page.getByRole('heading', { name: 'Alege o rețetă' })).toBeVisible();
+	const mealUrl = page.url().split('?')[0];
+
+	// fără rețete de mic dejun încă: se văd toate, grupate pe categorii
+	await expect(page.getByRole('button', { name: 'Toate', exact: true })).toHaveAttribute('aria-pressed', 'true');
+	await expect(page.locator('.group-title', { hasText: 'Supă / ciorbă' })).toBeVisible();
+	await expect(page.locator('.group-title', { hasText: 'Fel principal' })).toBeVisible();
+
+	// cu o rețetă de mic dejun, lista pornește de la categoriile potrivite mesei
+	await page.goto('/retete/nou');
+	await page.getByLabel('Nume', { exact: true }).fill('Omletă cu brânză');
+	await page.getByLabel('Categorie').selectOption('mic_dejun');
+	await page.getByRole('button', { name: 'Salvează rețeta' }).click();
+	await expect(page.getByRole('heading', { name: 'Omletă cu brânză' })).toBeVisible();
+	await page.goto(`${mealUrl}?adauga=1`);
+	await expect(page.getByRole('button', { name: 'Pentru mic dejun' })).toHaveAttribute('aria-pressed', 'true');
+	await expect(page.getByRole('button', { name: /Omletă cu brânză/ })).toBeVisible();
+	await expect(page.getByRole('button', { name: /Ciorbă de perișoare/ })).toHaveCount(0);
+	await page.screenshot({ path: shots('12-alege-reteta-mic-dejun'), fullPage: true });
+	await page.getByRole('button', { name: 'Toate', exact: true }).click();
+	await expect(page.getByRole('button', { name: /Ciorbă de perișoare/ })).toBeVisible();
+	await page.getByRole('button', { name: 'Pentru mic dejun' }).click();
+	// căutarea caută în toate categoriile
+	await page.getByLabel('Caută rețeta').fill('sarm');
+	await expect(page.getByRole('button', { name: /Sarmale cu smântână/ })).toBeVisible();
+
 	await page.goto(`/zi/${maine}`);
 	await expect(page.locator('.meal')).toHaveCount(1);
 	await expect(page.locator('.slot')).toHaveCount(2);

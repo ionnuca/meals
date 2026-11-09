@@ -80,3 +80,22 @@ export const AISLES = [
 export const DEFAULT_AISLE = 'Altele';
 
 export const UNITS = ['g', 'kg', 'ml', 'l', 'buc', 'lingură', 'linguriță', 'cană', 'legătură', 'cățel', 'pachet', 'sticlă', 'după gust'] as const;
+
+/** Categoriile de rețete potrivite fiecărui tip de masă, în ordinea în care se propun. */
+export const MEAL_TYPE_CATEGORIES: Record<string, string[]> = {
+	mic_dejun: ['mic_dejun', 'patiserie', 'gustare', 'bautura'],
+	pranz: ['supa', 'fel_principal', 'garnitura', 'salata', 'desert', 'bautura'],
+	gustare: ['gustare', 'desert', 'patiserie', 'bautura'],
+	cina: ['fel_principal', 'garnitura', 'salata', 'supa', 'desert', 'bautura'],
+	alta: []
+};
+
+/** Categoriile de rețete potrivite fiecărei secțiuni a unui eveniment. */
+export const EVENT_SECTION_CATEGORIES: Record<string, string[]> = {
+	aperitive: ['aperitiv', 'salata', 'patiserie'],
+	principale: ['fel_principal', 'supa', 'garnitura'],
+	garnituri: ['garnitura', 'salata'],
+	deserturi: ['desert', 'patiserie'],
+	bauturi: ['bautura'],
+	altele: []
+};

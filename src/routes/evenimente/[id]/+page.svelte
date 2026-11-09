@@ -6,7 +6,8 @@
 	import Stepper from '#lib/components/Stepper.svelte';
 	import ProductPicker from '#lib/components/ProductPicker.svelte';
 	import UnitSelect from '#lib/components/UnitSelect.svelte';
-	import { AISLES, EVENT_SECTIONS, categoryLabel } from '#lib/constants.ts';
+	import RecipePicker from '#lib/components/RecipePicker.svelte';
+	import { AISLES, EVENT_SECTION_CATEGORIES, EVENT_SECTIONS, categoryLabel, eventSectionLabel } from '#lib/constants.ts';
 	import { formatDayLong } from '#lib/dates.ts';
 	import { aggregate } from '#lib/shopping.ts';
 	import { formatQuantity, scaleFactor } from '#lib/units.ts';
@@ -44,17 +45,12 @@
 	let adding = $state(false);
 	let mode = $state<'reteta' | 'produs'>('reteta');
 	let section = $state('principale');
-	let filter = $state('');
 	let pId = $state<number | null>(null);
 	let pName = $state('');
 	let pQty = $state('');
 	let pUnit = $state('sticlă');
 	let pAisle = $state('');
 	let editing = $state(false);
-	const matches = $derived(
-		data.recipes.filter((r) => !filter || r.name.toLowerCase().includes(filter.trim().toLowerCase())).slice(0, 30)
-	);
-
 	function openAdd(s: string) {
 		section = s;
 		mode = s === 'bauturi' ? 'produs' : 'reteta';
@@ -174,24 +170,21 @@
 			</div>
 
 			{#if mode === 'reteta'}
-				<input type="search" placeholder="Caută rețeta…" bind:value={filter} aria-label="Caută rețeta" />
-				<ul class="options">
-					{#each matches as r (r.id)}
-						<li>
-							<form method="POST" action="?/addRecipe" use:enhance>
-								<input type="hidden" name="section" value={section} />
-								<input type="hidden" name="recipe_id" value={r.id} />
-								<button class="opt-btn">
-									<Photo photo={r.photo} category={r.category} size={40} radius={10} alt="" />
-									<span class="grow">{r.name}<br /><span class="small muted">{categoryLabel(r.category)} · pentru {r.servings}</span></span>
-									<Icon name="plus" size={18} stroke={2} />
-								</button>
-							</form>
-						</li>
-					{:else}
-						<li class="small muted">Nicio rețetă găsită. <a href="/retete/nou">Adaugă una</a>.</li>
-					{/each}
-				</ul>
+				{#key section}
+				<RecipePicker recipes={data.recipes} suggested={EVENT_SECTION_CATEGORIES[section] ?? []} suggestedLabel={`Pentru ${eventSectionLabel(section).toLowerCase()}`}>
+					{#snippet item(r)}
+						<form method="POST" action="?/addRecipe" use:enhance>
+							<input type="hidden" name="section" value={section} />
+							<input type="hidden" name="recipe_id" value={r.id} />
+							<button class="opt-btn">
+								<Photo photo={r.photo} category={r.category} size={40} radius={10} alt="" />
+								<span class="grow">{r.name}<br /><span class="small muted">{categoryLabel(r.category)} · pentru {r.servings}</span></span>
+								<Icon name="plus" size={18} stroke={2} />
+							</button>
+						</form>
+					{/snippet}
+				</RecipePicker>
+				{/key}
 			{:else}
 				<form
 					method="POST"
@@ -405,13 +398,6 @@
 	.seg button.on {
 		background: var(--accent);
 		color: #fff;
-	}
-	.options {
-		list-style: none;
-		margin: 0;
-		padding: 0;
-		max-height: 340px;
-		overflow-y: auto;
 	}
 	.opt-btn {
 		width: 100%;
