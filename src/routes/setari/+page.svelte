@@ -9,9 +9,12 @@
 	let { data, form }: PageProps = $props();
 
 	// svelte-ignore state_referenced_locally
-	let defaults = $state<Record<string, number>>({ ...data.mealDefaults });
+	let defaults = $state<Record<string, number>>({ ...data.mealSettings.servings });
+	// svelte-ignore state_referenced_locally
+	let daily = $state<Record<string, boolean>>(Object.fromEntries(data.mealSettings.daily.map((t) => [t, true])));
 	$effect(() => {
-		defaults = { ...data.mealDefaults };
+		defaults = { ...data.mealSettings.servings };
+		daily = Object.fromEntries(data.mealSettings.daily.map((t) => [t, true]));
 	});
 </script>
 
@@ -56,17 +59,20 @@
 </section>
 
 <section class="card stack" style="margin-top:16px">
-	<h2>Porții implicite</h2>
-	<p class="small muted">Câte porții primește automat o masă nouă, după tipul ei. Le poți schimba oricând la fiecare masă.</p>
+	<h2>Mesele zilei</h2>
+	<p class="small muted">Mesele bifate apar în fiecare zi, gata de completat. Numărul arată câte porții primește automat o masă nouă de acel tip; le poți schimba oricând la fiecare masă.</p>
 	{#if form?.defaultsOk}<p class="form-ok" role="status">{form.defaultsOk}</p>{/if}
 	<form method="POST" action="?/mealDefaults" class="stack" use:enhance={() => async ({ update }) => update({ reset: false })}>
 		{#each MEAL_TYPES as t (t.id)}
 			<div class="default-row">
-				<span class="grow">{t.label}</span>
+				<label class="grow row daily">
+					<input type="checkbox" name={`daily_${t.id}`} bind:checked={daily[t.id]} aria-label={`${t.label} în fiecare zi`} />
+					<span>{t.label}{#if daily[t.id]}<span class="small muted"> · zilnic</span>{/if}</span>
+				</label>
 				<Stepper bind:value={defaults[t.id]} name={`servings_${t.id}`} min={1} max={100} label={`porții la ${t.label.toLowerCase()}`} />
 			</div>
 		{/each}
-		<button class="btn">Salvează porțiile</button>
+		<button class="btn">Salvează</button>
 	</form>
 </section>
 
@@ -92,6 +98,11 @@
 </form>
 
 <style>
+	.daily input {
+		width: 22px;
+		height: 22px;
+		accent-color: var(--accent);
+	}
 	.default-row {
 		display: flex;
 		align-items: center;

@@ -4,7 +4,7 @@
 	import Photo from '#lib/components/Photo.svelte';
 	import Icon from '#lib/components/Icon.svelte';
 	import Stepper from '#lib/components/Stepper.svelte';
-	import { MEAL_TYPES, categoryLabel } from '#lib/constants.ts';
+	import { MEAL_ORDER, MEAL_TYPES, categoryLabel, mealTypeLabel } from '#lib/constants.ts';
 	import { dayNumber, formatDayLong, startOfWeek, WEEKDAYS_SHORT } from '#lib/dates.ts';
 	import type { PageProps } from './$types';
 
@@ -14,13 +14,33 @@
 	let mealType = $state('pranz');
 	let servings = $state(2);
 	let time = $state('');
-	// ora se propune după tipul mesei, dar poate fi schimbată
 	// ora și porțiile se propun după tipul mesei (porțiile din Setări), dar pot fi schimbate
 	$effect(() => {
 		time = MEAL_TYPES.find((m) => m.id === mealType)?.time ?? '';
 		servings = data.mealDefaults[mealType] ?? 2;
 	});
 	const used = $derived(new Set(data.meals.map((m) => m.mealType)));
+
+	// Mesele zilnice din Setări care nu există încă apar ca locuri goale (doar de azi înainte).
+	const slots = $derived(
+		data.past
+			? []
+			: data.dailyTypes
+					.filter((t) => !used.has(t))
+					.map((t) => ({
+						type: t,
+						label: mealTypeLabel(t),
+						time: MEAL_TYPES.find((m) => m.id === t)?.time ?? '',
+						servings: data.mealDefaults[t] ?? 2
+					}))
+	);
+	type Entry = { kind: 'meal'; key: string; order: number; meal: (typeof data.meals)[number] } | { kind: 'slot'; key: string; order: number; slot: (typeof slots)[number] };
+	const entries = $derived<Entry[]>(
+		[
+			...data.meals.map((m) => ({ kind: 'meal' as const, key: `m${m.id}`, order: MEAL_ORDER[m.mealType] ?? 9, meal: m })),
+			...slots.map((s) => ({ kind: 'slot' as const, key: `s${s.type}`, order: MEAL_ORDER[s.type] ?? 9, slot: s }))
+		].sort((a, b) => a.order - b.order)
+	);
 
 	$effect(() => {
 		// la deschiderea formularului, propune prima masă care lipsește
@@ -53,7 +73,22 @@
 		</a>
 	{/each}
 
-	{#each data.meals as m (m.id)}
+	{#each entries as entry (entry.key)}
+		{#if entry.kind === 'slot'}
+			{@const sl = entry.slot}
+			<form method="POST" action="?/addMeal" class="card slot" use:enhance>
+				<input type="hidden" name="slot" value="1" />
+				<input type="hidden" name="meal_type" value={sl.type} />
+				<input type="hidden" name="time" value={sl.time} />
+				<input type="hidden" name="servings" value={sl.servings} />
+				<div class="spread">
+					<p class="small"><span class="mt">{sl.label}</span>{#if sl.time}<span class="muted"> · {sl.time}</span>{/if}</p>
+					<span class="pill muted-pill"><Icon name="person" size={14} stroke={2} />{sl.servings} {sl.servings === 1 ? 'porție' : 'porții'}</span>
+				</div>
+				<button class="btn small dashed" aria-label={`Adaugă feluri la ${sl.label.toLowerCase()}`}><Icon name="plus" size={16} stroke={2.2} />Adaugă feluri</button>
+			</form>
+		{:else}
+		{@const m = entry.meal}
 		<a class="card meal" href={`/masa/${m.id}`}>
 			<div class="spread">
 				<p class="small"><span class="mt">{m.label}</span>{#if m.time}<span class="muted"> · {m.time}</span>{/if}</p>
@@ -72,13 +107,14 @@
 				<p class="small muted">Niciun fel încă · atinge ca să adaugi</p>
 			{/each}
 		</a>
+		{/if}
 	{/each}
 
 	{#if data.past}
 		<p class="past-note">Zi trecută: o poți consulta, dar nu se mai poate planifica.</p>
 	{/if}
 
-	{#if !data.meals.length && !data.events.length && !adding}
+	{#if !data.meals.length && !data.events.length && !slots.length && !adding}
 		<div class="empty">{data.past ? 'Nu a fost nimic planificat în această zi.' : 'Ziua e liberă. Adaugă prima masă.'}</div>
 	{/if}
 
@@ -110,6 +146,20 @@
 </div>
 
 <style>
+	.slot {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		border-style: dashed;
+		background: transparent;
+	}
+	.slot .btn {
+		align-self: flex-start;
+	}
+	.muted-pill {
+		background: var(--ground);
+		color: var(--muted);
+	}
 	.strip {
 		display: grid;
 		grid-template-columns: repeat(7, minmax(0, 1fr));

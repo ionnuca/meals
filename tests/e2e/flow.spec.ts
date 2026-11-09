@@ -309,8 +309,8 @@ test('porțiile implicite din Setări se aplică meselor noi', async ({ page }) 
 	const cina = page.locator('.default-row', { hasText: 'Cină' });
 	await expect(cina.locator('output')).toHaveText('2');
 	for (let i = 0; i < 3; i++) await cina.getByRole('button', { name: 'Mai multe porții la cină' }).click();
-	await page.getByRole('button', { name: 'Salvează porțiile' }).click();
-	await expect(page.getByText('Porțiile implicite au fost salvate.')).toBeVisible();
+	await page.getByRole('button', { name: 'Salvează', exact: true }).click();
+	await expect(page.getByText('Setările meselor au fost salvate.')).toBeVisible();
 	await page.reload();
 	await expect(page.locator('.default-row', { hasText: 'Cină' }).locator('output')).toHaveText('5');
 
@@ -323,6 +323,47 @@ test('porțiile implicite din Setări se aplică meselor noi', async ({ page }) 
 	await page.locator('label.type', { hasText: 'Cină' }).click();
 	await page.getByRole('button', { name: 'Creează și adaugă feluri' }).click();
 	await expect(page.locator('.big')).toContainText('5 porții');
+});
+
+test('fiecare zi are implicit mic dejun, prânz și cină', async ({ page }) => {
+	await login(page);
+	const maine = (() => {
+		const d = new Date(`${todayIso()}T12:00:00Z`);
+		d.setUTCDate(d.getUTCDate() + 1);
+		return d.toISOString().slice(0, 10);
+	})();
+
+	await page.goto(`/zi/${maine}`);
+	await expect(page.locator('.slot')).toHaveCount(3);
+	await expect(page.locator('.slot').nth(0)).toContainText('Mic dejun');
+	await expect(page.locator('.slot').nth(1)).toContainText('Prânz');
+	await expect(page.locator('.slot').nth(2)).toContainText('Cină');
+	// cina are 5 porții implicite (setate în testul anterior)
+	await expect(page.locator('.slot').nth(2)).toContainText('5 porții');
+	await page.screenshot({ path: shots('11-zi-mese-implicite'), fullPage: true });
+
+	// completarea unui loc gol creează masa și deschide alegerea felurilor
+	await page.getByRole('button', { name: 'Adaugă feluri la mic dejun' }).click();
+	await expect(page).toHaveURL(/\/masa\/\d+/);
+	await expect(page.getByRole('heading', { name: 'Mic dejun' })).toBeVisible();
+	await expect(page.getByRole('heading', { name: 'Alege o rețetă' })).toBeVisible();
+	await page.goto(`/zi/${maine}`);
+	await expect(page.locator('.meal')).toHaveCount(1);
+	await expect(page.locator('.slot')).toHaveCount(2);
+
+	// planul săptămânii arată și mesele necompletate
+	await page.goto(`/plan?s=${maine}`);
+	const zi = page.locator(`a.day[href="/zi/${maine}"]`);
+	await expect(zi.locator('dt')).toHaveText(['Mic dejun', 'Prânz', 'Cină']);
+
+	// din Setări se alege care mese apar zilnic
+	await page.goto('/setari');
+	await page.getByLabel('Cină în fiecare zi').uncheck();
+	await page.getByRole('button', { name: 'Salvează', exact: true }).click();
+	await expect(page.getByText('Setările meselor au fost salvate.')).toBeVisible();
+	await page.goto(`/zi/${maine}`);
+	await expect(page.locator('.slot')).toHaveCount(1);
+	await expect(page.locator('.slot')).toContainText('Prânz');
 });
 
 test('tragerea în jos reîmprospătează datele paginii', async ({ page }) => {

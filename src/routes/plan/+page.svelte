@@ -3,6 +3,7 @@
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import Photo from '#lib/components/Photo.svelte';
 	import Icon from '#lib/components/Icon.svelte';
+	import { MEAL_ORDER, mealTypeLabel } from '#lib/constants.ts';
 	import { addDays, formatDayShort, formatRange, weekdayIndex, WEEKDAYS } from '#lib/dates.ts';
 	import type { PageProps } from './$types';
 
@@ -11,9 +12,18 @@
 	const days = $derived(
 		data.days.map((date) => {
 			const meals = data.meals.filter((m) => m.date === date);
+			// rândurile zilei: mesele existente plus mesele zilnice încă necompletate (doar de azi înainte)
+			const present = new Set(meals.map((m) => m.mealType));
+			const rows = [
+				...meals.map((m) => ({ key: `m${m.id}`, order: MEAL_ORDER[m.mealType] ?? 9, label: m.label, text: m.dishes.map((x) => x.name).join(' · '), empty: !m.dishes.length })),
+				...(date < data.today ? [] : data.dailyTypes)
+					.filter((t) => !present.has(t))
+					.map((t) => ({ key: `s${t}`, order: MEAL_ORDER[t] ?? 9, label: mealTypeLabel(t), text: '', empty: true }))
+			].sort((a, b) => a.order - b.order);
 			return {
 				date,
 				meals,
+				rows,
 				events: data.events.filter((e) => e.date === date),
 				thumbs: meals.flatMap((m) => m.dishes).slice(0, 6)
 			};
@@ -61,11 +71,11 @@
 					{#each d.thumbs as t (t.id)}<Photo photo={t.photo} category={t.category} size={40} radius={10} alt={t.name} />{/each}
 				</div>
 			{/if}
-			{#if d.meals.length}
+			{#if d.rows.length}
 				<dl class="meals">
-					{#each d.meals as m (m.id)}
-						<dt>{m.label}</dt>
-						<dd>{m.dishes.length ? m.dishes.map((x) => x.name).join(' · ') : '—'}</dd>
+					{#each d.rows as r (r.key)}
+						<dt>{r.label}</dt>
+						<dd class:todo={r.empty}>{r.empty ? '—' : r.text}</dd>
 					{/each}
 				</dl>
 			{:else if !d.events.length}
@@ -126,6 +136,9 @@
 	}
 	.meals dd {
 		margin: 0;
+	}
+	.meals dd.todo {
+		color: var(--muted);
 	}
 	.event {
 		border-radius: 12px;

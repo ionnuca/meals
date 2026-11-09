@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { page } from '$app/state';
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import Photo from '#lib/components/Photo.svelte';
 	import Icon from '#lib/components/Icon.svelte';
@@ -39,7 +40,8 @@
 	}
 
 	let filter = $state('');
-	let picking = $state(false);
+	// deschisă direct când masa tocmai a fost creată dintr-un loc gol al zilei
+	let picking = $state(page.url.searchParams.has('adauga'));
 	const matches = $derived(
 		data.recipes
 			.filter((r) => !filter || r.name.toLowerCase().includes(filter.trim().toLowerCase()))

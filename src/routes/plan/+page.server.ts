@@ -4,6 +4,7 @@ import { getDb, schema } from '#lib/server/db/index.ts';
 import { eventsBetween, mealsBetween } from '#lib/server/data.ts';
 import { addDays, isIsoDate, startOfWeek, weekDays } from '#lib/dates.ts';
 import { PAST_MESSAGE, todayLocal } from '#lib/server/forms.ts';
+import { getMealSettings } from '#lib/server/settings.ts';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ url }) => {
@@ -11,8 +12,8 @@ export const load: PageServerLoad = async ({ url }) => {
 	const s = url.searchParams.get('s');
 	const monday = startOfWeek(isIsoDate(s) ? s : now);
 	const sunday = addDays(monday, 6);
-	const [meals, events] = await Promise.all([mealsBetween(monday, sunday), eventsBetween(monday, sunday)]);
-	return { monday, sunday, today: now, days: weekDays(monday), meals, events };
+	const [meals, events, settings] = await Promise.all([mealsBetween(monday, sunday), eventsBetween(monday, sunday), getMealSettings()]);
+	return { monday, sunday, today: now, days: weekDays(monday), meals, events, dailyTypes: settings.daily };
 };
 
 export const actions: Actions = {

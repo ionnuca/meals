@@ -3,7 +3,7 @@ import { asc, eq } from 'drizzle-orm';
 import { getDb, schema } from '#lib/server/db/index.ts';
 import { hashPassword, invalidateUserSessions, isEmail, normalizeEmail, validatePassword, verifyPassword } from '#lib/server/auth.ts';
 import { id as parseId, str } from '#lib/server/forms.ts';
-import { getMealDefaults, saveMealDefaults } from '#lib/server/settings.ts';
+import { getMealSettings, saveMealDefaults } from '#lib/server/settings.ts';
 import { MEAL_TYPES } from '#lib/constants.ts';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -12,7 +12,7 @@ export const load: PageServerLoad = async () => ({
 		.select({ id: schema.users.id, name: schema.users.name, email: schema.users.email })
 		.from(schema.users)
 		.orderBy(asc(schema.users.id)),
-	mealDefaults: await getMealDefaults()
+	mealSettings: await getMealSettings()
 });
 
 export const actions: Actions = {
@@ -20,8 +20,9 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const values: Record<string, number> = {};
 		for (const t of MEAL_TYPES) values[t.id] = Number(form.get(`servings_${t.id}`));
-		await saveMealDefaults(values);
-		return { defaultsOk: 'Porțiile implicite au fost salvate.' };
+		const daily = MEAL_TYPES.filter((t) => form.get(`daily_${t.id}`) === 'on').map((t) => t.id);
+		await saveMealDefaults(values, daily);
+		return { defaultsOk: 'Setările meselor au fost salvate.' };
 	},
 
 	addUser: async ({ request }) => {
